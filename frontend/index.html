@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Library Management System</title>
+  <link rel="stylesheet" href="styles.css">
+  
+<!-- ================================================================ -->
+ <!-- ====================STARTING PAGE============================== -->
+<!-- ================================================================ -->
+</head>
+<body>
+  <!-- Landing Section -->
+  <div class="landing-container">
+    <div class="logo">
+      <img src="LIBRARY_LOGO.png" alt="Library Logo">
+    </div>
+    <div class="content">
+      <h1>Welcome to the Library Management System of <br> Bataan Heroes Memorial College</h1>
+      <p><i>This platform is designed to make accessing and managing library resources easier for everyone. </i><br></p>
+      <button id="proceedBtn" class="button">CLICK HERE TO PROCEED</button>
+    </div>
+  </div>
+
+  <!-- Modal Popup -->
+  <div class="modal" id="formModal">
+    <div class="modal-content">
+      <span class="close-btn" id="closeModal">&times;</span>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button id="signup-tab" class="active">Sign Up</button>
+        <button id="login-tab">Log-In</button>
+      </div>
+
+      <!-- Sign Up Form -->
+      <form class="form active" id="signup-form">
+        <h2>Sign Up</h2>
+        <p>Create a new library account</p>
+        <label for="studentId">Student ID*</label>
+        <input type="text" id="studentId" required>
+        
+        <label for="fullName">Full Name*</label>
+        <input type="text" id="fullName" required>
+        
+        <label for="email">Email*</label>
+        <input type="email" id="email" required>
+        
+        <label for="password">Password*</label>
+        <input type="password" id="password" required>
+        
+        <label for="confirmPassword">Confirm Password*</label>
+        <input type="password" id="confirmPassword" required>
+        
+        <button type="submit">Sign up</button>
+      </form>
+
+      <!-- Login Form -->
+      <form class="form" id="login-form">
+        <h2>Log-In</h2>
+        <p>Access your library account</p>
+        <label for="loginStudentId">Student ID*</label>
+        <input type="text" id="loginStudentId" required>
+        
+        <label for="loginEmail">Email*</label>
+        <input type="email" id="loginEmail" required>
+        
+        <label for="loginPassword">Password*</label>
+        <input type="password" id="loginPassword" required>
+        <div class="loginbutton"> 
+        <button type="submit"> <a href="home.html">Log-In</a></button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  
+<script>
+
+    const proceedBtn = document.getElementById("proceedBtn");
+    const modal = document.getElementById("formModal");
+    const closeModal = document.getElementById("closeModal");
+    const signupTab = document.getElementById("signup-tab");
+    const loginTab = document.getElementById("login-tab");
+    const signupForm = document.getElementById("signup-form");
+    const loginForm = document.getElementById("login-form");
+
+    // Open modal
+      proceedBtn.addEventListener("click", () => {
+      modal.style.display = "flex";
+      // default to login
+      loginTab.classList.add("active");
+      signupTab.classList.remove("active");
+      loginForm.classList.add("active");
+      signupForm.classList.remove("active");
+    });
+
+    // Close modal
+    closeModal.addEventListener("click", () => {
+      modal.style.display = "none";
+    });
+
+    window.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        modal.style.display = "none";
+      }
+    });
+
+    // Switch tabs
+    signupTab.addEventListener("click", () => {
+      signupTab.classList.add("active");
+      loginTab.classList.remove("active");
+      signupForm.classList.add("active");
+      loginForm.classList.remove("active");
+    });
+
+    loginTab.addEventListener("click", () => {
+      loginTab.classList.add("active");
+      signupTab.classList.remove("active");
+      loginForm.classList.add("active");
+      signupForm.classList.remove("active");
+    });
+
+</script>
+
+</body>
+</html>
