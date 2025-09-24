@@ -1,3 +1,14 @@
+<?php
+// Start the session to check for login status
+session_start();
+
+// Check if the user is not logged in (the student_id session variable is not set)
+if (!isset($_SESSION["student_id"])) {
+    // If not logged in, redirect them to the login page
+    header("location: index.html");
+    exit;
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -18,7 +29,7 @@
         </div>  
         <nav>
             <ul>
-                <li><a href="home.html">Home</a></li>
+                <li><a href="home.php">Home</a></li> <!-- Updated link to home.php -->
                 <li><a href="reservation-section.html">Reservations</a></li>
                 <li><a href="borrow-books.html">Borrowed Books</a></li>
                 <li><a href="bookmark.html">Bookmarks</a></li>
@@ -28,6 +39,8 @@
         <div class="prof-notif-icon" >
             <img class="notification-icons" src="NOTIF-ICON.png" alt="Notification">
             <img class="profile-icons " src="profile-icon.png" alt="Profile">
+            <!-- LOGOUT LINK ADDED HERE -->
+            <a href="../backend/logout.php" style="margin-left: 15px; color: white; text-decoration: none; font-weight: bold;">Logout</a>
         </div>  
     </header>
 
@@ -420,7 +433,7 @@
     <!-- Navigation Links -->
     <div class="footer-column footer-links">
       <ul>
-        <li><a href="home.html">Home</a></li>
+        <li><a href="home.php">Home</a></li> <!-- Updated link to home.php -->
         <li><a href="reservation-section.html">Reservations</a></li>
         <li><a href="bookmark.html">Borrowed Books</a></li>
         <li><a href="bookmark.html">Bookmarks</a></li>
