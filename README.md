@@ -49,4 +49,4 @@ To run this application locally, you will need to have a web server environment 
 *   **XAMPP:** Used as the local development environment (includes Apache server and MySQL).
 *   **phpMyAdmin:** Used for managing the MySQL database.
 *   **Visual Studio Code:** The primary code editor for this project.
-*   **Git & GitHub:** Used for version control and code hosting.****
+*   **Git & GitHub:** Used for version control and code hosting.
