@@ -1,0 +1,373 @@
+/* General Body and Font Styles */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: "Roboto", sans-serif; 
+    line-height: 1.6;
+    background: #121212;
+    color: #ffffff;
+}
+
+/* Header Styles */
+header {
+    background-color: #1f1f1f;
+    color: white;
+    padding: 10px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between; 
+    flex-wrap: wrap;
+    border-bottom: 1px solid #333;
+}
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.logo-container img {
+    max-width: 50px;
+    max-height: 50px;
+}
+.notification-icons {
+    max-width: 25px;
+    max-height: 25px;
+}
+nav ul {
+    display: flex;
+    list-style: none;
+    gap: 20px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+nav ul li {
+    margin: 0 15px;
+}
+nav ul li a {
+    color: white;
+    text-decoration: none;
+    font-weight: bold;
+    transition: 0.3s;
+}
+header > div {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+@media (max-width: 768px) {
+    header {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+    nav ul {
+        justify-content: center;
+    }
+}
+
+/* Main Content Area */
+.main-content {
+    max-width: 1200px;
+    margin: 40px auto;
+    padding: 0 20px;
+}
+.book-section {
+    margin-bottom: 60px;
+}
+.section-header {
+    text-align: center;
+    margin-bottom: 30px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #444;
+}
+.section-header h1 {
+    font-size: 2rem;
+    color: #e0e0e0;
+    margin-bottom: 5px;
+}
+.book-section.overdue .section-header h1 {
+    color: #e74c3c;
+}
+.section-header p {
+    font-size: 1rem;
+    color: #aaa;
+}
+
+/* Book Card Container (for first two sections) */
+.product-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    justify-items: center;
+    min-height: 380px; /* Give container a minimum height to avoid layout shifts */
+}
+.product-card {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 300px;
+    border: 1px solid #333;
+    background-color: #1e1e1e;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    padding: 20px;
+    border-radius: 10px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 16px rgba(0,0,0,0.5);
+}
+.product-card img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+.product-card h3 {
+    text-align: center;
+    color: #e0e0e0;
+    margin-bottom: 15px;
+    font-size: 1.1rem;
+}
+.card-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+.date-info {
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid #444;
+}
+.date-info span {
+    display: block;
+    font-size: 0.9rem;
+    color: #bbb;
+    margin-bottom: 5px;
+}
+.date-info span strong {
+    color: #e0e0e0;
+}
+.pickup-status {
+    background-color: #27ae60;
+    color: white;
+    text-align: center;
+    padding: 5px 0;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+.overdue-card {
+    border: 1px solid #e74c3c;
+    box-shadow: 0 0 15px rgba(231, 76, 60, 0.2);
+}
+.overdue-card .due-date {
+    color: #e74c3c;
+    font-weight: bold;
+}
+
+/* Returned History Styles */
+.history-container {
+    max-width: 900px;
+    margin: 0 auto;
+    min-height: 400px; /* Give container a minimum height */
+}
+.history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.history-item {
+    display: flex;
+    align-items: center;
+    padding: 15px;
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    transition: background-color 0.2s ease;
+}
+.history-item:not(.header-row):hover {
+    background-color: #2a2a2a;
+}
+.history-item.header-row {
+    background-color: transparent;
+    border: none;
+    padding-bottom: 10px;
+    margin-bottom: 5px;
+    border-bottom: 2px solid #444;
+    font-weight: bold;
+    color: #aaa;
+}
+.history-item img {
+    width: 45px;
+    height: 65px;
+    object-fit: cover;
+    border-radius: 4px;
+    margin-right: 20px;
+    filter: grayscale(50%);
+}
+.history-item .book-details {
+    flex-grow: 1;
+}
+.book-details h3 {
+    font-size: 1rem;
+    color: #e0e0e0;
+    margin: 0;
+}
+.history-item .history-dates {
+    display: flex;
+    justify-content: space-between;
+    width: 200px;
+    margin-left: 20px;
+    color: #bbb;
+}
+.history-item.header-row .history-dates span, .history-item:not(.header-row) .history-dates span {
+    width: 50%;
+    text-align: left;
+}
+
+/* Empty State Message */
+.empty-message {
+    width: 100%;
+    text-align: center;
+    color: #888;
+    font-size: 1.1rem;
+    padding: 40px 0;
+    grid-column: 1 / -1; /* Make it span all grid columns if inside a grid */
+}
+
+/* Footer Styles */
+footer {
+    background: #000;
+    padding: 60px 40px;
+    color: #aaa;
+    margin-top: 60px;
+}
+.footer-content {
+    display: flex;
+    max-width: 1200px;
+    margin: 0 auto 40px auto;
+    gap: 64px;
+    flex-wrap: wrap;
+}
+.footer-column {
+    flex: 1;
+    min-width: 220px;
+}
+.footer-column.company-info {
+    flex: 1.5;
+}
+.company-logo img {
+    width: 144px;
+    margin-bottom: 24px;
+}
+.footer-item {
+    margin-bottom: 12px;
+}
+.footer-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #ccc;
+    display: block;
+    margin-bottom: 4px;
+}
+.footer-text {
+    font-size: 14px;
+    display: block;
+}
+.social-links {
+    margin-top: 24px;
+}
+.social-links img {
+    width: 24px;
+    height: 24px;
+}
+.footer-column.footer-links {
+    display: flex;
+    gap: 64px;
+    flex: 2;
+}
+.footer-links ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.footer-links ul li {
+    margin-bottom: 12px;
+}
+.footer-links ul li a {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+.footer-links ul li a:hover {
+    color: #c81d14;
+}
+.footer-bottom {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-top: 20px;
+    border-top: 1px solid #444;
+}
+.footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.footer-row span {
+    font-size: 14px;
+}
+.footer-bottom-links {
+    display: flex;
+    gap: 24px;
+}
+.footer-bottom-links a {
+    font-size: 14px;
+    color: #aaa;
+    text-decoration: none;
+}
+.footer-bottom-links a:hover {
+    text-decoration: underline;
+}
+
+/* =============================================================== */
+/* ===== PAGINATION STYLES (NEWLY ADDED) ========================= */
+/* =============================================================== */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 30px;
+    padding: 10px;
+    flex-wrap: wrap;
+    width: 100%;
+}
+.pagination a {
+    color: #ccc;
+    text-decoration: none;
+    padding: 8px 14px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+.pagination a:hover {
+    background-color: #333;
+    border-color: #555;
+}
+.pagination a.active {
+    background-color: #c81d14;
+    color: #fff;
+    border-color: #c81d14;
+    font-weight: bold;
+}
