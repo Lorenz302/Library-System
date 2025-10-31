@@ -1,40 +1,66 @@
 <?php
 // backend/login.php
 
-// Start a session to store user data after login
 session_start();
-
-// Include the database connection file
 include 'db_connect.php';
 
-// Check if the form data has been sent using POST method
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+// Set the header to return JSON
+header('Content-Type: application/json');
 
-    // Get data from the form
-    $student_id = mysqli_real_escape_string($conn, $_POST['student_id']);
+// Initialize the response array
+$response = [
+    'success' => false,
+    'message' => 'An error occurred.',
+    'redirect' => ''
+];
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    // Using mysqli_real_escape_string for security since we are building a raw SQL string.
+    $id_number = mysqli_real_escape_string($conn, $_POST['id_number']);
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $password = mysqli_real_escape_string($conn, $_POST['password']);
 
-    // SQL query to find a user with matching student_id, email, and password
-    $sql = "SELECT * FROM users WHERE student_id = '$student_id' AND email = '$email' AND password = '$password'";
+    // --- REVERTED LOGIN LOGIC (INSECURE) ---
+    // This query checks for a user where all three plain-text fields match exactly.
+    $sql = "SELECT * FROM users WHERE id_number = '$id_number' AND email = '$email' AND password = '$password'";
     $result = $conn->query($sql);
 
-    // Check if exactly one user was found
+    // Check if exactly one user was found with these credentials
     if ($result->num_rows == 1) {
-        // Login successful
-        // Store user's student_id in the session for future use
-        $_SESSION['student_id'] = $student_id;
+        $user = $result->fetch_assoc();
+
+        // --- LOGIN SUCCESSFUL ---
+
+        // Destroy the old session and create a new, clean one to prevent session fixation attacks.
+        session_regenerate_id(true);
+
+        // Set the session variables for the logged-in user.
+        $_SESSION['user_id'] = $user['user_id'];
+        $_SESSION['id_number'] = $user['id_number'];
+        $_SESSION['fullname'] = $user['fullname'];
+        $_SESSION['role'] = $user['role'];
         
-        // Redirect the user to the home page
-        header("Location: ../frontend/home.html");
-        exit();
+        // Prepare the success response
+        $response['success'] = true;
+        $response['message'] = 'Login successful!';
+
+        // Set the redirect URL based on the user's role
+        if ($user['role'] == 'librarian') {
+            $response['redirect'] = '../frontend/admin_dashboard.php';
+        } else {
+            $response['redirect'] = '../frontend/home.php';
+        }
+
     } else {
-        // Login failed, show an error and send them back to the index page
-        echo "<script>alert('Invalid Student ID, Email, or Password.'); window.location.href='../frontend/index.html';</script>";
-        exit();
+        // If num_rows is 0 or more than 1, the credentials are wrong.
+        $response['success'] = false;
+        $response['message'] = 'Invalid ID Number, Email, or Password.';
     }
 }
 
-// Close the database connection
 $conn->close();
+
+// Send the JSON response back to the JavaScript
+echo json_encode($response);
+exit();
 ?>
