@@ -51,7 +51,7 @@ $base_query = "
     FROM reservation_requests rr
     JOIN users u ON rr.id_number = u.id_number
     JOIN books b ON rr.book_id = b.book_id
-    WHERE rr.reservation_status IN ('Fulfilled', 'Expired', 'Cancelled'))
+    WHERE rr.reservation_status IN ('Expired', 'Cancelled'))
 ";
 
 $final_base_query = "SELECT * FROM ($base_query) AS history_log";
@@ -113,7 +113,7 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']) . "!";
         .pagination a { display: inline-block; color: #ecf0f1; padding: 8px 16px; text-decoration: none; border: 1px solid #444; margin: 0 4px; border-radius: 5px; transition: background-color 0.2s; }
         .pagination a:hover, .pagination a.active { background-color: #e74c3c; border-color: #e74c3c; }
         .status-tag { padding: 4px 8px; border-radius: 5px; color: #fff; font-weight: bold; font-size: 0.8em; text-align: center; }
-        .status-returned, .status-fulfilled { background-color: #27ae60; }
+        .status-returned { background-color: #27ae60; }
         .status-rejected, .status-expired { background-color: #c0392b; }
         .status-cancelled { background-color: #7f8c8d; }
     </style>
@@ -153,9 +153,7 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']) . "!";
                             <option value="all" <?php if ($filter_status == 'all') echo 'selected'; ?>>All Statuses</option>
                             <option value="Returned" <?php if ($filter_status == 'Returned') echo 'selected'; ?>>Returned</option>
                             <option value="Rejected" <?php if ($filter_status == 'Rejected') echo 'selected'; ?>>Rejected</option>
-                            <option value="Fulfilled" <?php if ($filter_status == 'Fulfilled') echo 'selected'; ?>>Fulfilled (Reservation)</option>
                             <option value="Expired" <?php if ($filter_status == 'Expired') echo 'selected'; ?>>Expired</option>
-                            <option value="Cancelled" <?php if ($filter_status == 'Cancelled') echo 'selected'; ?>>Cancelled</option>
                         </select>
                         <select name="sort">
                             <option value="DESC" <?php if ($sort_order == 'DESC') echo 'selected'; ?>>Newest First</option>
