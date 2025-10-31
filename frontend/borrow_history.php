@@ -25,59 +25,63 @@ $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] :
 $results_per_page = 15;
 $offset = ($page - 1) * $results_per_page;
 
-// This query is updated to include due_date
+// --- CORRECTED AND EXPANDED BASE QUERY ---
 $base_query = "
-    SELECT 
-        br.borrow_id, 
+    (SELECT 
+        br.borrow_id AS history_id, 
         u.fullname AS user_name, 
         b.book_name,
-        br.borrow_date,
-        br.due_date,
+        br.borrow_date AS request_date,
         br.return_date,
+        'Borrow' as request_type,
         br.borrow_status AS status
     FROM borrow_requests br
     JOIN users u ON br.id_number = u.id_number
     JOIN books b ON br.book_id = b.book_id
-    WHERE br.borrow_status IN ('Returned', 'Rejected', 'Cancelled')
+    WHERE br.borrow_status IN ('Returned', 'Rejected'))
+    UNION ALL
+    (SELECT 
+        rr.reservation_id AS history_id, 
+        u.fullname AS user_name, 
+        b.book_name,
+        rr.reservation_date AS request_date,
+        NULL as return_date,
+        'Reservation' as request_type,
+        rr.reservation_status AS status
+    FROM reservation_requests rr
+    JOIN users u ON rr.id_number = u.id_number
+    JOIN books b ON rr.book_id = b.book_id
+    WHERE rr.reservation_status IN ('Fulfilled', 'Expired', 'Cancelled'))
 ";
+
+$final_base_query = "SELECT * FROM ($base_query) AS history_log";
 
 $conditions = [];
 $params = [];
 $types = '';
 
 if (!empty($search_term)) {
-    $conditions[] = "(u.fullname LIKE ? OR b.book_name LIKE ?)";
+    $conditions[] = "(user_name LIKE ? OR book_name LIKE ?)";
     $search_like = "%" . $search_term . "%";
     $params = array_merge($params, [$search_like, $search_like]);
     $types .= 'ss';
 }
 if ($filter_status !== 'all') {
-    $conditions[] = "br.borrow_status = ?";
+    $conditions[] = "status = ?";
     $params[] = $filter_status;
     $types .= 's';
 }
 
-$where_clause = !empty($conditions) ? " AND " . implode(" AND ", $conditions) : "";
+$where_clause = !empty($conditions) ? " WHERE " . implode(" AND ", $conditions) : "";
 
-$final_query_string = $base_query . $where_clause;
-
-// The count query needs to be constructed carefully with subqueries when there's a join and where clause.
-// A simpler way for counting without subquery complexity for this case:
-$count_base_query = "
-    SELECT COUNT(*) 
-    FROM borrow_requests br
-    JOIN users u ON br.id_number = u.id_number
-    JOIN books b ON br.book_id = b.book_id
-    WHERE br.borrow_status IN ('Returned', 'Rejected', 'Cancelled')
-";
-$count_sql = $count_base_query . $where_clause;
+$count_sql = "SELECT COUNT(*) FROM ($final_base_query) AS final_count $where_clause";
 $stmt_count = $conn->prepare($count_sql);
 if (!empty($params)) { $stmt_count->bind_param($types, ...$params); }
 $stmt_count->execute();
 $total_results = $stmt_count->get_result()->fetch_row()[0];
 $total_pages = ceil($total_results / $results_per_page);
 
-$data_sql = "$final_query_string ORDER BY br.borrow_date $sort_order LIMIT ? OFFSET ?";
+$data_sql = "$final_base_query $where_clause ORDER BY request_date $sort_order LIMIT ? OFFSET ?";
 $stmt_data = $conn->prepare($data_sql);
 
 $params_with_pagination = $params;
@@ -100,24 +104,22 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']) . "!";
     <title>Borrow History - Admin Panel</title>
     <link rel="stylesheet" href="admin_styles.css">
     <style>
-        .filter-form { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
+        .filter-form { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
         .filter-form input[type="text"], .filter-form select, .filter-form button { padding: 8px 12px; border-radius: 5px; border: 1px solid #444; background-color: #2c3e50; color: #ecf0f1; font-size: 14px; }
         .filter-form input[type="text"] { flex-grow: 1; }
-        .filter-form input[type="text"]::placeholder { color: #bdc3c7; }
         .filter-form button { background-color: #e74c3c; border-color: #e74c3c; cursor: pointer; font-weight: bold; transition: background-color 0.2s; }
         .filter-form button:hover { background-color: #c0392b; }
         .pagination { margin-top: 25px; text-align: center; }
         .pagination a { display: inline-block; color: #ecf0f1; padding: 8px 16px; text-decoration: none; border: 1px solid #444; margin: 0 4px; border-radius: 5px; transition: background-color 0.2s; }
         .pagination a:hover, .pagination a.active { background-color: #e74c3c; border-color: #e74c3c; }
         .status-tag { padding: 4px 8px; border-radius: 5px; color: #fff; font-weight: bold; font-size: 0.8em; text-align: center; }
-        .status-returned { background-color: #27ae60; }
-        .status-rejected { background-color: #c0392b; }
+        .status-returned, .status-fulfilled { background-color: #27ae60; }
+        .status-rejected, .status-expired { background-color: #c0392b; }
         .status-cancelled { background-color: #7f8c8d; }
     </style>
 </head>
 <body>
     <div class="admin-container">
-        <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="sidebar-header">
                 <img src="LIBRARY_LOGO.png" alt="Logo" class="sidebar-logo">
@@ -134,10 +136,9 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']) . "!";
             </nav>
         </aside>
 
-        <!-- Main Content Area -->
         <div class="main-wrapper">
             <header class="main-header">
-                <h1>Borrow History</h1>
+                <h1>Request History</h1>
                 <div class="user-info">
                     <span><?php echo $welcome_message; ?></span>
                     <a href="../backend/logout.php">Logout</a>
@@ -152,6 +153,8 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']) . "!";
                             <option value="all" <?php if ($filter_status == 'all') echo 'selected'; ?>>All Statuses</option>
                             <option value="Returned" <?php if ($filter_status == 'Returned') echo 'selected'; ?>>Returned</option>
                             <option value="Rejected" <?php if ($filter_status == 'Rejected') echo 'selected'; ?>>Rejected</option>
+                            <option value="Fulfilled" <?php if ($filter_status == 'Fulfilled') echo 'selected'; ?>>Fulfilled (Reservation)</option>
+                            <option value="Expired" <?php if ($filter_status == 'Expired') echo 'selected'; ?>>Expired</option>
                             <option value="Cancelled" <?php if ($filter_status == 'Cancelled') echo 'selected'; ?>>Cancelled</option>
                         </select>
                         <select name="sort">
@@ -167,40 +170,32 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']) . "!";
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Request ID</th>
                                     <th>User Name</th>
                                     <th>Book Title</th>
-                                    <th>Borrow Date</th>
-                                    <th>Due Date</th>
-                                    <th>Return Date</th>
-                                    <th>Status</th>
+                                    <th>Request Date</th>
+                                    <th>End Date</th>
+                                    <th>Type</th>
+                                    <th>Final Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php if ($history_requests->num_rows > 0): ?>
                                     <?php while($row = $history_requests->fetch_assoc()): ?>
                                         <tr>
-                                            <td><?php echo htmlspecialchars($row['borrow_id']); ?></td>
                                             <td><?php echo htmlspecialchars($row['user_name']); ?></td>
                                             <td><?php echo htmlspecialchars($row['book_name']); ?></td>
-                                            <td><?php echo htmlspecialchars(date('Y-m-d', strtotime($row['borrow_date']))); ?></td>
+                                            <td><?php echo htmlspecialchars(date('Y-m-d', strtotime($row['request_date']))); ?></td>
                                             <td>
                                                 <?php 
-                                                    // Display due date only if it's not NULL
-                                                    echo $row['due_date'] ? htmlspecialchars(date('Y-m-d', strtotime($row['due_date']))) : 'N/A';
-                                                ?>
-                                            </td>
-                                            <td>
-                                                <?php 
-                                                    // Display return date only if it's not NULL
                                                     echo $row['return_date'] ? htmlspecialchars(date('Y-m-d', strtotime($row['return_date']))) : 'N/A';
                                                 ?>
                                             </td>
+                                            <td><?php echo htmlspecialchars($row['request_type']); ?></td>
                                             <td><span class="status-tag status-<?php echo strtolower($row['status']); ?>"><?php echo htmlspecialchars($row['status']); ?></span></td>
                                         </tr>
                                     <?php endwhile; ?>
                                 <?php else: ?>
-                                    <tr><td colspan="7">No historical records found matching your criteria.</td></tr>
+                                    <tr><td colspan="6">No historical records found matching your criteria.</td></tr>
                                 <?php endif; ?>
                             </tbody>
                         </table>
