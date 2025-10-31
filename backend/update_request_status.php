@@ -33,11 +33,32 @@ try {
             $stmt2->execute();
             break;
 
+        // =========================================================================
+        // ====================== FINAL CORRECTED REJECT LOGIC =====================
+        // =========================================================================
         case 'Reject':
-            $stmt = $conn->prepare("UPDATE borrow_requests SET borrow_status = 'Rejected' WHERE borrow_id = ?");
-            $stmt->bind_param("i", $request_id);
-            $stmt->execute();
+            // Step 1: Find the original request to see if it was 'Approved'.
+            $stmt_find = $conn->prepare("SELECT borrow_status FROM borrow_requests WHERE borrow_id = ?");
+            $stmt_find->bind_param("i", $request_id);
+            $stmt_find->execute();
+            $result = $stmt_find->get_result();
+            $request = $result->fetch_assoc();
+            $stmt_find->close();
+
+            // Step 2: Update the status and explicitly nullify the dates to prevent bugs.
+            $stmt_update = $conn->prepare("UPDATE borrow_requests SET borrow_status = 'Rejected', due_date = NULL, return_date = NULL WHERE borrow_id = ?");
+            $stmt_update->bind_param("i", $request_id);
+            $stmt_update->execute();
+
+            // Step 3: If the request was previously 'Approved', we must return the book's copy to circulation.
+            if ($request && $request['borrow_status'] === 'Approved') {
+                $stmt_book = $conn->prepare("UPDATE books SET available_copies = available_copies + 1 WHERE book_id = ?");
+                $stmt_book->bind_param("i", $book_id);
+                $stmt_book->execute();
+                $stmt_book->close();
+            }
             break;
+        // =========================================================================
 
         case 'MarkPickedUp':
             $stmt = $conn->prepare("UPDATE borrow_requests SET borrow_status = 'Borrowed' WHERE borrow_id = ?");
@@ -88,23 +109,17 @@ try {
             $stmt->execute();
             break;
 
-        // =========================================================================
-        // ============================ THIS IS THE FIX ============================
-        // =========================================================================
-        case 'MarkAsExpired': // Corrected from 'MarkAsNoShow'
-            // Step 1: Mark the current reservation as 'Expired'
+        case 'MarkAsExpired':
             $stmt = $conn->prepare("UPDATE reservation_requests SET reservation_status = 'Expired' WHERE reservation_id = ?");
             $stmt->bind_param("i", $request_id);
             $stmt->execute();
             
-            // Step 2: Since this person missed their chance, immediately check for the next person in the queue
             $stmt_next2 = $conn->prepare("SELECT reservation_id FROM reservation_requests WHERE book_id = ? AND reservation_status = 'Pending' ORDER BY reservation_date ASC LIMIT 1");
             $stmt_next2->bind_param("i", $book_id);
             $stmt_next2->execute();
             $result_next2 = $stmt_next2->get_result();
 
             if ($result_next2->num_rows > 0) {
-                // If someone else is waiting, make the book 'Available' for them
                 $next_reservation2 = $result_next2->fetch_assoc();
                 $next_reservation_id2 = $next_reservation2['reservation_id'];
                 
@@ -112,13 +127,11 @@ try {
                 $stmt_update_res2->bind_param("i", $next_reservation_id2);
                 $stmt_update_res2->execute();
             } else {
-                // If NO ONE is waiting, make the book available to the public
                 $stmt_book2 = $conn->prepare("UPDATE books SET available_copies = available_copies + 1 WHERE book_id = ?");
                 $stmt_book2->bind_param("i", $book_id);
                 $stmt_book2->execute();
             }
             break;
-        // =========================================================================
 
         default:
             throw new Exception("Unknown action specified.");
@@ -129,11 +142,9 @@ try {
 
 } catch (Exception $e) {
     $conn->rollback();
-    // For debugging: error_log($e->getMessage());
     $redirect_status = 'error';
 }
 
-// Redirect back to the manage requests page, preserving filters
 $query_params = [
     'search' => $_POST['search'] ?? '',
     'type' => $_POST['type'] ?? 'all',
@@ -145,5 +156,5 @@ $query_params = [
 
 header("Location: ../frontend/manage_requests.php?" . http_build_query($query_params));
 $conn->close();
-exit();
+exit;
 ?>
