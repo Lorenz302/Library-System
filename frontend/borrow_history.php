@@ -45,7 +45,10 @@ $base_query = "
         u.fullname AS user_name, 
         b.book_name,
         rr.reservation_date AS request_date,
-        NULL as return_date,
+        CASE 
+            WHEN rr.reservation_status = 'Expired' THEN rr.pickup_expiry_date
+            ELSE NULL 
+        END as return_date,
         'Reservation' as request_type,
         rr.reservation_status AS status
     FROM reservation_requests rr
@@ -185,7 +188,11 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']) . "!";
                                             <td><?php echo htmlspecialchars(date('Y-m-d', strtotime($row['request_date']))); ?></td>
                                             <td>
                                                 <?php 
-                                                    echo $row['return_date'] ? htmlspecialchars(date('Y-m-d', strtotime($row['return_date']))) : 'N/A';
+                                                    if (!empty($row['return_date']) && $row['return_date'] !== '0000-00-00') {
+                                                        echo htmlspecialchars(date('Y-m-d', strtotime($row['return_date'])));
+                                                    } else {
+                                                        echo 'N/A';
+                                                    }
                                                 ?>
                                             </td>
                                             <td><?php echo htmlspecialchars($row['request_type']); ?></td>
