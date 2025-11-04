@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Oct 31, 2025 at 05:51 AM
+-- Generation Time: Nov 04, 2025 at 12:49 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
@@ -45,11 +45,11 @@ CREATE TABLE `books` (
 --
 
 INSERT INTO `books` (`book_id`, `book_name`, `book_description`, `category`, `favorite`, `author`, `publication_year`, `total_copies`, `available_copies`, `book_image_path`) VALUES
-(2, 'blue', 'bklue', 'Electronics', 0, 'lorens', '2011', 5, 5, 'Book_Images/1760530368_book_blue.jpg'),
-(3, 'red', 'garatihin kita', 'Martial arts', 0, 'james', '2023', 6, 5, 'Book_Images/1760536536_red_book.jpg'),
-(4, 'yellow', 'taba', 'cookbook', 0, 'chrsitian', '2012', 4, 5, 'Book_Images/1760536561_yellow_book.jpg'),
-(5, 'template1', 'asd', 'Breakfast', 0, 'chrsitian', '2012', 1, 0, NULL),
-(6, 'templat2', 'wad', 'Breakfast', 0, 'chrsitian', '2010', 23, 22, NULL);
+(2, 'blue', 'blue', 'Electronics', 0, 'lorens', '2011', 5, 5, 'Book_Images/book_690461b11a09d8.33575919.jpg'),
+(3, 'red', 'garatihin kita', 'Martial arts', 0, 'james', '2023', 5, 5, 'Book_Images/book_690461b6c54be7.31502369.jpg'),
+(4, 'yellow', 'taba', 'cookbook', 0, 'chrsitian', '2012', 5, 5, 'Book_Images/book_690461d77b5cd9.39305234.jpg'),
+(5, 'template1', 'asd', 'Breakfast', 0, 'chrsitian', '2012', 1, 1, 'Book_Images/book_69045d7f042b40.04259692.jpeg'),
+(6, 'templat2', 'wad', 'Breakfast', 0, 'chrsitian', '2010', 23, 23, 'Book_Images/book_690461ce4e7b24.68065226.jpg');
 
 -- --------------------------------------------------------
 
@@ -65,6 +65,7 @@ CREATE TABLE `borrow_requests` (
   `gsuit_account` varchar(255) NOT NULL,
   `program_and_year` varchar(255) NOT NULL,
   `borrow_date` date NOT NULL,
+  `due_date` date DEFAULT NULL,
   `return_date` date NOT NULL,
   `borrow_status` varchar(255) NOT NULL DEFAULT 'Pending',
   `book_id` int(11) NOT NULL
@@ -74,8 +75,34 @@ CREATE TABLE `borrow_requests` (
 -- Dumping data for table `borrow_requests`
 --
 
-INSERT INTO `borrow_requests` (`borrow_id`, `id_number`, `firstname`, `lastname`, `gsuit_account`, `program_and_year`, `borrow_date`, `return_date`, `borrow_status`, `book_id`) VALUES
-(15, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'N/A', '2025-10-31', '2025-11-07', 'Returned', 2);
+INSERT INTO `borrow_requests` (`borrow_id`, `id_number`, `firstname`, `lastname`, `gsuit_account`, `program_and_year`, `borrow_date`, `due_date`, `return_date`, `borrow_status`, `book_id`) VALUES
+(15, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'N/A', '2025-10-31', NULL, '2025-11-07', 'Returned', 2),
+(29, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-3', '2025-10-31', '2025-11-12', '2025-10-31', 'Returned', 3),
+(30, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-12', '2025-10-31', 'Returned', 5),
+(31, 2201004, '', '', '', '', '2025-10-31', '2025-11-14', '2025-10-31', 'Returned', 5),
+(32, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-12', '2025-10-31', 'Returned', 5),
+(33, 2201004, '', '', '', '', '2025-10-31', '2025-11-14', '2025-10-31', 'Returned', 5),
+(34, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-13', '2025-10-31', 'Returned', 5),
+(35, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-12', '2025-10-31', 'Returned', 5),
+(39, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-02', '2025-10-31', 'Returned', 5),
+(40, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-04', '2025-10-31', 'Returned', 5),
+(41, 123456, '', '', '', '', '2025-10-31', '2025-11-14', '2025-10-31', 'Returned', 5),
+(42, 2201004, '', '', '', '', '2025-10-31', '2025-11-14', '2025-10-31', 'Returned', 5),
+(43, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', '2025-11-01', '2025-10-31', 'Returned', 5),
+(44, 123456, '', '', '', '', '2025-10-31', '2025-11-14', '2025-10-31', 'Returned', 5),
+(45, 2201004, '', '', '', '', '2025-10-31', '2025-11-14', '2025-10-31', 'Returned', 5),
+(47, 123456, 'Lorenz', 'Feliciano', 'soonecamz@gmail.com', 'IT-4', '2025-10-31', '2025-11-02', '2025-10-31', 'Returned', 4),
+(48, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', '2025-11-01', '2025-10-31', 'Returned', 2),
+(49, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', '2025-11-22', '2025-10-31', 'Returned', 6),
+(51, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 2),
+(52, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 4),
+(53, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 2),
+(54, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 2),
+(55, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', '2025-11-02', '2025-10-31', 'Returned', 2),
+(56, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 5),
+(57, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 2),
+(58, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 6),
+(59, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 6);
 
 -- --------------------------------------------------------
 
@@ -100,15 +127,27 @@ CREATE TABLE `notification` (
 CREATE TABLE `reservation_requests` (
   `reservation_id` bigint(20) UNSIGNED NOT NULL,
   `id_number` int(11) NOT NULL,
-  `firstname` varchar(255) NOT NULL,
-  `lastname` varchar(255) NOT NULL,
-  `gsuit_account` varchar(255) NOT NULL,
-  `program_and_year` varchar(255) NOT NULL,
-  `date_of_request` date NOT NULL,
-  `reservation_status` varchar(255) NOT NULL DEFAULT 'Pending',
-  `book_id` int(11) NOT NULL,
-  `book_name` varchar(255) NOT NULL
+  `reservation_date` datetime NOT NULL DEFAULT current_timestamp(),
+  `reservation_status` enum('Pending','Available','Fulfilled','Expired','Cancelled') NOT NULL DEFAULT 'Pending',
+  `notified_date` datetime DEFAULT NULL,
+  `pickup_expiry_date` datetime DEFAULT NULL,
+  `book_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `reservation_requests`
+--
+
+INSERT INTO `reservation_requests` (`reservation_id`, `id_number`, `reservation_date`, `reservation_status`, `notified_date`, `pickup_expiry_date`, `book_id`) VALUES
+(2, 2201004, '2025-10-31 14:57:18', 'Fulfilled', '2025-10-31 14:57:26', '2025-11-02 14:57:26', 5),
+(3, 2201004, '2025-10-31 14:59:13', 'Fulfilled', '2025-10-31 14:59:38', '2025-11-02 14:59:38', 5),
+(4, 2201004, '2025-10-31 15:06:32', 'Expired', '2025-10-31 15:06:41', '2025-11-02 15:06:41', 5),
+(5, 123456, '2025-10-31 16:06:18', 'Expired', '2025-10-31 16:07:04', '2025-11-02 16:07:04', 5),
+(6, 2201004, '2025-10-31 16:06:53', 'Expired', '2025-10-31 16:07:16', '2025-11-02 16:07:16', 5),
+(7, 123456, '2025-10-31 16:11:55', 'Fulfilled', '2025-10-31 16:12:30', '2025-11-02 16:12:30', 5),
+(8, 2201004, '2025-10-31 16:12:17', 'Fulfilled', '2025-10-31 16:13:05', '2025-11-02 16:13:05', 5),
+(9, 123456, '2025-10-31 16:18:47', 'Fulfilled', '2025-10-31 16:19:31', '2025-11-02 16:19:31', 5),
+(10, 2201004, '2025-10-31 16:19:02', 'Fulfilled', '2025-10-31 16:20:04', '2025-11-02 16:20:04', 5);
 
 -- --------------------------------------------------------
 
@@ -119,6 +158,7 @@ CREATE TABLE `reservation_requests` (
 CREATE TABLE `users` (
   `id_number` int(11) NOT NULL,
   `fullname` varchar(255) NOT NULL,
+  `program_and_year` varchar(100) DEFAULT NULL,
   `email` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL,
   `user_id` int(11) NOT NULL,
@@ -130,9 +170,10 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id_number`, `fullname`, `email`, `password`, `user_id`, `role`, `status`) VALUES
-(999999, 'Admin User', 'lorenzfeliciano12@gmail.com', '1', 2, 'librarian', 'Active'),
-(2201004, 'Lorenz Feliciano', 'lorenzfeliciano303@gmail.com', '1', 4, 'student', 'Active');
+INSERT INTO `users` (`id_number`, `fullname`, `program_and_year`, `email`, `password`, `user_id`, `role`, `status`) VALUES
+(999999, 'Admin User', NULL, 'lorenzfeliciano12@gmail.com', '1', 2, 'librarian', 'Active'),
+(2201004, 'Van ryan samiano', 'IT-47', 'lorenzfeliciano303@gmail.com', '1', 4, 'student', 'Active'),
+(123456, 'Lorenz Feliciano', 'IT-4', 'soonecamz@gmail.com', 'asd', 5, 'student', 'Active');
 
 -- --------------------------------------------------------
 
@@ -145,6 +186,13 @@ CREATE TABLE `user_favorites` (
   `id_number` int(11) NOT NULL,
   `book_id` int(11) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `user_favorites`
+--
+
+INSERT INTO `user_favorites` (`favorite_id`, `id_number`, `book_id`) VALUES
+(21, 2201004, 6);
 
 --
 -- Indexes for dumped tables
@@ -204,13 +252,13 @@ ALTER TABLE `user_favorites`
 -- AUTO_INCREMENT for table `books`
 --
 ALTER TABLE `books`
-  MODIFY `book_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `book_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `borrow_requests`
 --
 ALTER TABLE `borrow_requests`
-  MODIFY `borrow_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+  MODIFY `borrow_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=60;
 
 --
 -- AUTO_INCREMENT for table `notification`
@@ -222,19 +270,19 @@ ALTER TABLE `notification`
 -- AUTO_INCREMENT for table `reservation_requests`
 --
 ALTER TABLE `reservation_requests`
-  MODIFY `reservation_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT;
+  MODIFY `reservation_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `user_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
 
 --
 -- AUTO_INCREMENT for table `user_favorites`
 --
 ALTER TABLE `user_favorites`
-  MODIFY `favorite_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `favorite_id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- Constraints for dumped tables
