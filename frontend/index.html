@@ -6,65 +6,74 @@
   <title>Library Management System</title>
   <link rel="stylesheet" href="styles.css">
   
-  <!-- ================================================================ -->
-  <!-- ============ STYLES FOR PASSWORD TOGGLE ICON =================== -->
-  <!-- ================================================================ -->
   <style>
-    /* A wrapper to position the icon relative to the input field */
-    .password-wrapper {
-      position: relative;
-      width: 100%;
+    /* Password Toggle Styles */
+    .password-wrapper { position: relative; width: 100%; }
+    .password-wrapper input { width: 100%; padding-right: 45px; box-sizing: border-box; }
+    .toggle-password {
+      position: absolute; right: 10px; top: 50%;
+      transform: translateY(calc(-50% - 7px));
+      cursor: pointer; width: 24px; height: 24px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .toggle-password svg { width: 20px; height: 20px; stroke: #9ca3af; }
+
+    /* OTP Modal Styles */
+    .modal {
+        display: none; /* Hidden by default */
+        position: fixed; z-index: 1000; left: 0; top: 0;
+        width: 100%; height: 100%; overflow: auto;
+        background-color: rgba(0,0,0,0.5);
+        justify-content: center; align-items: center;
     }
     
-    /* Make sure the input field doesn't overlap with the icon */
-    .password-wrapper input {
-      width: 100%;
-      padding-right: 45px; /* Add space for the icon */
-      box-sizing: border-box; /* Ensures padding is included in the width */
+    /* Ensure modals use flex when active to center content */
+    .modal.active { display: flex; }
+
+    .modal-content {
+        background-color: #fefefe; padding: 30px; border-radius: 8px;
+        width: 90%; max-width: 400px; position: relative;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .close-btn {
+        position: absolute; right: 15px; top: 10px;
+        font-size: 24px; font-weight: bold; cursor: pointer;
     }
 
-    /* Styles for the icon container */
-    .toggle-password {
-      position: absolute;
-      right: 10px; /* Position icon on the right */
-      top: 50%; /* Move the top of the icon to the vertical middle of the wrapper */
-      transform: translateY(calc(-50% - 7px));
-      cursor: pointer;
-      user-select: none; /* Prevents the icon from being highlighted as text */
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 24px;
-      height: 24px;
+    #otp-form input[type="text"] {
+        width: 100%; padding: 15px; margin: 20px 0;
+        text-align: center; font-size: 1.5em; letter-spacing: 8px;
+        border: 2px solid #4CAF50; border-radius: 5px;
     }
-
-    /* Style the SVG icon itself */
-    .toggle-password svg {
-      width: 20px;
-      height: 20px;
-      stroke: #9ca3af; /* A neutral gray color, works for light/dark themes */
+    
+    #otp-form button {
+        width: 100%; padding: 12px; background-color: #4CAF50;
+        color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 16px;
+    }
+    
+    /* Disabled button style */
+    button:disabled {
+        background-color: #ccc !important;
+        cursor: not-allowed;
     }
   </style>
 </head>
 <body>
+
   <!-- Landing Section -->
   <div class="landing-container">
-    <div class="logo">
-      <img src="LIBRARY_LOGO.png" alt="Library Logo">
-    </div>
+    <div class="logo"><img src="LIBRARY_LOGO.png" alt="Library Logo"></div>
     <div class="content">
-      <h1>Welcome to the Library Management System of <br> Bataan Heroes Memorial College</h1>
-      <p><i>This platform is designed to make accessing and managing library resources easier for everyone. </i><br></p>
+      <h1>Welcome to the Library Management System</h1>
       <button id="proceedBtn" class="button">CLICK HERE TO PROCEED</button>
     </div>
   </div>
 
-  <!-- Modal Popup -->
+  <!-- Login/Signup Modal -->
   <div class="modal" id="formModal">
     <div class="modal-content">
       <span class="close-btn" id="closeModal">&times;</span>
-
-      <!-- Tabs -->
       <div class="tabs">
         <button id="signup-tab" class="active">Sign Up</button>
         <button id="login-tab">Log-In</button>
@@ -73,152 +82,173 @@
       <!-- Sign Up Form -->
       <form class="form active" id="signup-form" action="../backend/register.php" method="POST">
         <h2>Sign Up</h2>
-        <p>Create a new library account</p>
-        <label for="studentId">Student ID</label>
-        <input type="text" id="studentId" name="id_number" required>
-        
-        <label for="fullName">Full Name*</label>
-        <input type="text" id="fullName" name="fullname" required>
-        
-        <label for="programAndYear">Program and Year*</label>
-        <input type="text" id="programAndYear" name="program_and_year" placeholder="e.g., BSIT - 3" required>
-        
-        <label for="email">Email*</label>
-        <input type="email" id="email" name="email" required>
-        
-        <label for="password">Password*</label>
+        <input type="text" name="id_number" placeholder="Student ID" required>
+        <input type="text" name="fullname" placeholder="Full Name" required>
+        <input type="text" name="program_and_year" placeholder="Program & Year" required>
+        <input type="email" name="email" placeholder="Email" required>
         <div class="password-wrapper">
-          <input type="password" id="password" name="password" required>
+          <input type="password" id="password" name="password" placeholder="Password" required>
           <span class="toggle-password" id="togglePassword"></span>
         </div>
-        
-        <label for="confirmPassword">Confirm Password*</label>
         <div class="password-wrapper">
-          <input type="password" id="confirmPassword" name="confirm_password" required>
+          <input type="password" id="confirmPassword" name="confirm_password" placeholder="Confirm Password" required>
           <span class="toggle-password" id="toggleConfirmPassword"></span>
         </div>
-        
         <button type="submit">Sign up</button>
       </form>
 
       <!-- Login Form -->
-      <form class="form" id="login-form" action="../backend/login.php" method="POST">
+      <form class="form" id="login-form">
         <h2>Log-In</h2>
-        <p>Access your library account</p>
-        <label for="loginStudentId">Student/Employee ID*</label>
-        <input type="text" id="loginStudentId" name="id_number" required>
-        
-        <label for="loginEmail">Email*</label>
-        <input type="email" id="loginEmail" name="email" required>
-        
-        <label for="loginPassword">Password*</label>
+        <input type="text" name="id_number" placeholder="Student ID" required>
+        <input type="email" name="email" placeholder="Email" required>
         <div class="password-wrapper">
-          <input type="password" id="loginPassword" name="password" required>
+          <input type="password" id="loginPassword" name="password" placeholder="Password" required>
           <span class="toggle-password" id="toggleLoginPassword"></span>
         </div>
-        <div class="loginbutton"> 
-            <button type="submit">Log-In</button>
-        </div>
+        <button type="submit" id="loginSubmitBtn" style="margin-top: 20px;">Log-In</button>
       </form>
     </div>
   </div>
 
+  <!-- ================================================================ -->
+  <!-- ======================== OTP MODAL ============================= -->
+  <!-- ================================================================ -->
+  <div class="modal" id="otpModal">
+    <div class="modal-content" style="text-align: center;">
+        <span class="close-btn" id="closeOtpModal">&times;</span>
+        <h2>Two-Factor Authentication</h2>
+        <p id="otp-message">Please enter the code sent to your email.</p>
+        
+        <form id="otp-form">
+            <!-- Stores user_id from the login step -->
+            <input type="hidden" id="otpUserId" name="user_id"> 
+            
+            <label for="otpCode" style="font-weight:bold;">ENTER OTP CODE</label>
+            <input type="text" id="otpCode" name="otp_code" maxlength="6" pattern="\d{6}" placeholder="000000" required autocomplete="off">
+            
+            <button type="submit" id="otpSubmitBtn">VERIFY LOGIN</button>
+        </form>
+    </div>
+  </div>
   
 <script>
-    // Get all the elements from the page
+    // --- SVG Icons ---
+    const eyeIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+    const eyeOffIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
+
+    // --- DOM Elements ---
     const proceedBtn = document.getElementById("proceedBtn");
-    const modal = document.getElementById("formModal");
+    const formModal = document.getElementById("formModal");
+    const otpModal = document.getElementById("otpModal");
     const closeModal = document.getElementById("closeModal");
-    const signupTab = document.getElementById("signup-tab");
-    const loginTab = document.getElementById("login-tab");
-    const signupForm = document.getElementById("signup-form");
+    const closeOtpModal = document.getElementById("closeOtpModal");
     const loginForm = document.getElementById("login-form");
+    const otpForm = document.getElementById("otp-form");
+    
+    // Buttons (for disabling)
+    const loginSubmitBtn = document.getElementById("loginSubmitBtn");
+    const otpSubmitBtn = document.getElementById("otpSubmitBtn");
 
-    // A function to clear the login form fields
-    function clearLoginForm() {
-      loginForm.reset(); 
+    // --- Toggle Modals ---
+    proceedBtn.onclick = () => formModal.classList.add("active");
+    
+    closeModal.onclick = () => formModal.classList.remove("active");
+    closeOtpModal.onclick = () => otpModal.classList.remove("active");
+
+    window.onclick = (e) => {
+      if (e.target == formModal) formModal.classList.remove("active");
+      if (e.target == otpModal) otpModal.classList.remove("active");
     }
 
-    // Event Listeners for Modal and Tabs
-    proceedBtn.addEventListener("click", () => {
-      modal.style.display = "flex";
-      signupTab.classList.add("active");
-      loginTab.classList.remove("active");
-      signupForm.classList.add("active");
-      loginForm.classList.remove("active");
-    });
+    // --- Tab Logic ---
+    document.getElementById("signup-tab").onclick = function() {
+        this.classList.add("active");
+        document.getElementById("login-tab").classList.remove("active");
+        document.getElementById("signup-form").classList.add("active");
+        document.getElementById("login-form").classList.remove("active");
+    };
+    document.getElementById("login-tab").onclick = function() {
+        this.classList.add("active");
+        document.getElementById("signup-tab").classList.remove("active");
+        document.getElementById("login-form").classList.add("active");
+        document.getElementById("signup-form").classList.remove("active");
+    };
 
-    closeModal.addEventListener("click", () => {
-      modal.style.display = "none";
-      clearLoginForm(); 
-    });
-
-    window.addEventListener("click", (e) => {
-      if (e.target === modal) {
-        modal.style.display = "none";
-        clearLoginForm(); 
-      }
-    });
-
-    signupTab.addEventListener("click", () => {
-      signupTab.classList.add("active");
-      loginTab.classList.remove("active");
-      signupForm.classList.add("active");
-      loginForm.classList.remove("active");
-      clearLoginForm();
-    });
-
-    loginTab.addEventListener("click", () => {
-      loginTab.classList.add("active");
-      signupTab.classList.remove("active");
-      loginForm.classList.add("active");
-      signupForm.classList.remove("active");
-    });
-
-    // ================================================================
-    // ============ SVG ICONS FOR PASSWORD TOGGLE =====================
-    // ================================================================
-    const eyeIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
-    const eyeOffIconSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>`;
-
-    function setupPasswordToggle(inputId, toggleId) {
-      const passwordInput = document.getElementById(inputId);
-      const toggleIcon = document.getElementById(toggleId);
-
-      if (passwordInput && toggleIcon) {
-        // Set the initial icon
-        toggleIcon.innerHTML = eyeIconSVG;
-
-        toggleIcon.addEventListener('click', function() {
-          const isPassword = passwordInput.getAttribute('type') === 'password';
-          if (isPassword) {
-            passwordInput.setAttribute('type', 'text');
-            toggleIcon.innerHTML = eyeOffIconSVG;
-          } else {
-            passwordInput.setAttribute('type', 'password');
-            toggleIcon.innerHTML = eyeIconSVG;
-          }
-        });
-      }
+    // --- Password Toggles ---
+    function setupToggle(inputId, toggleId) {
+        const inp = document.getElementById(inputId);
+        const ico = document.getElementById(toggleId);
+        if(inp && ico) {
+            ico.innerHTML = eyeIconSVG;
+            ico.onclick = () => {
+                const isPass = inp.type === 'password';
+                inp.type = isPass ? 'text' : 'password';
+                ico.innerHTML = isPass ? eyeOffIconSVG : eyeIconSVG;
+            }
+        }
     }
+    setupToggle('password', 'togglePassword');
+    setupToggle('confirmPassword', 'toggleConfirmPassword');
+    setupToggle('loginPassword', 'toggleLoginPassword');
 
-    // Call the function for all three password fields
-    setupPasswordToggle('password', 'togglePassword');
-    setupPasswordToggle('confirmPassword', 'toggleConfirmPassword');
-    setupPasswordToggle('loginPassword', 'toggleLoginPassword');
-
-    // ================================================================
-    // ================== AJAX LOGIN FORM LOGIC =======================
-    // ================================================================
-    loginForm.addEventListener('submit', function(event) {
-        event.preventDefault();
+    // --- AJAX LOGIN ---
+    loginForm.addEventListener('submit', function(e) {
+        e.preventDefault(); 
         const formData = new FormData(loginForm);
+
+        // 1. DISABLE BUTTON TO PREVENT DOUBLE CLICKS
+        loginSubmitBtn.disabled = true;
+        loginSubmitBtn.textContent = "Sending OTP...";
 
         fetch('../backend/login.php', {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+        .then(res => res.json())
+        .then(data => {
+            if (data.success && data.otp_required) {
+                // Hide Login Modal
+                formModal.classList.remove("active");
+                
+                // Prepare OTP Modal
+                document.getElementById('otpUserId').value = data.user_id;
+                document.getElementById('otp-message').textContent = data.message;
+                document.getElementById('otpCode').value = '';
+                
+                // Show OTP Modal
+                otpModal.classList.add("active");
+            } else if (data.success) {
+                window.location.href = data.redirect;
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("An error occurred. Please try again.");
+        })
+        .finally(() => {
+            // 2. RE-ENABLE BUTTON REGARDLESS OF OUTCOME
+            loginSubmitBtn.disabled = false;
+            loginSubmitBtn.textContent = "Log-In";
+        });
+    });
+
+    // --- AJAX OTP VERIFICATION ---
+    otpForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData(otpForm);
+
+        // 1. DISABLE BUTTON
+        otpSubmitBtn.disabled = true;
+        otpSubmitBtn.textContent = "Verifying...";
+
+        fetch('../backend/verify_otp.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
         .then(data => {
             if (data.success) {
                 window.location.href = data.redirect;
@@ -226,12 +256,16 @@
                 alert(data.message);
             }
         })
-        .catch(error => {
-            console.error('Error:', error);
-            alert('An unexpected error occurred. Please try again.');
+        .catch(err => {
+            console.error(err);
+            alert("An error occurred verifying OTP.");
+        })
+        .finally(() => {
+            // 2. RE-ENABLE BUTTON
+            otpSubmitBtn.disabled = false;
+            otpSubmitBtn.textContent = "VERIFY LOGIN";
         });
     });
 </script>
-
 </body>
 </html>
