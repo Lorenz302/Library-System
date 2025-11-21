@@ -1,23 +1,27 @@
 <?php
+// backend/update_user_status.php
+
 session_start();
 include 'db_connect.php';
+require_once 'send_status_email.php';
 
-// 1. SECURITY & DATA GATHERING
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'librarian' || $_SERVER["REQUEST_METHOD"] !== "POST") {
+// 1. SECURITY CHECK: Allow both Admin and Librarian
+$allowed_roles = ['admin', 'librarian'];
+if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles) || $_SERVER["REQUEST_METHOD"] !== "POST") {
     header("Location: ../frontend/index.html");
     exit;
 }
 
-// Get form data for the action
+$current_user_role = $_SESSION['role'];
 $action = $_POST['action'] ?? '';
-$user_id = (int)($_POST['user_id'] ?? 0);
+$target_user_id = (int)($_POST['user_id'] ?? 0);
 
-// Prevent a librarian from acting on themselves
-if ($user_id === (int)$_SESSION['user_id']) {
+// Prevent self-action
+if ($target_user_id === (int)$_SESSION['user_id']) {
     die("Error: You cannot perform this action on your own account.");
 }
 
-// Get form data for preserving state on redirect
+// Redirect URL logic
 $redirect_params = [
     'search' => $_POST['search'] ?? '',
     'role' => $_POST['role'] ?? 'all',
@@ -26,54 +30,85 @@ $redirect_params = [
 ];
 $redirect_url = "../frontend/manage_users.php?" . http_build_query($redirect_params);
 
-// 2. PROCESS THE ACTION
-if ($user_id > 0 && !empty($action)) {
+if ($target_user_id > 0 && !empty($action)) {
+    
+    // Fetch target user data to check THEIR role and get email
+    $user_query = "SELECT fullname, email, role FROM users WHERE user_id = $target_user_id";
+    $user_result = $conn->query($user_query);
+    $target_user = $user_result->fetch_assoc();
+
+    if (!$target_user) {
+        header("Location: " . $redirect_url . "&op_status=error&msg=User_not_found");
+        exit;
+    }
+
+    // ==================================================================
+    // ==================== PERMISSION GATES (FIXED) ====================
+    // ==================================================================
+
+    // Rule 1: Librarians can ONLY manage 'student' accounts.
+    // They cannot touch 'admin' OR other 'librarian' accounts.
+    if ($current_user_role === 'librarian') {
+        if ($target_user['role'] === 'admin' || $target_user['role'] === 'librarian') {
+            die("Error: Librarians can only manage Students. You cannot modify this account.");
+        }
+    }
+
+    // Rule 2: Only Admins can Promote or Demote (Already correct, but keeping for safety)
+    if (($action === 'promote' || $action === 'demote') && $current_user_role !== 'admin') {
+        die("Error: Only Administrators can change user roles.");
+    }
+
+    // ==================================================================
+
+    // --- PROCESS ACTION ---
     $sql = "";
     $new_value = "";
+    $email_action_type = "";
 
     switch ($action) {
         case 'activate':
-            // <<< FIXED: Changed 'id' to 'user_id' in WHERE clause
             $sql = "UPDATE users SET status = ? WHERE user_id = ?";
             $new_value = 'Active';
+            $email_action_type = 'activate';
             break;
-        case 'deactivate':
-            // <<< FIXED: Changed 'id' to 'user_id' in WHERE clause
+        case 'ban':
             $sql = "UPDATE users SET status = ? WHERE user_id = ?";
-            $new_value = 'Inactive';
+            $new_value = 'Banned'; 
+            $email_action_type = 'ban';
             break;
         case 'promote':
-            // <<< FIXED: Changed 'id' to 'user_id' in WHERE clause
             $sql = "UPDATE users SET role = ? WHERE user_id = ?";
-            $new_value = 'librarian';
+            $new_value = 'librarian'; 
+            $email_action_type = 'promote';
             break;
         case 'demote':
-            // <<< FIXED: Changed 'id' to 'user_id' in WHERE clause
             $sql = "UPDATE users SET role = ? WHERE user_id = ?";
             $new_value = 'student';
+            $email_action_type = 'demote';
             break;
         default:
-            // Invalid action, redirect with an error
             header("Location: " . $redirect_url . "&op_status=error&msg=Invalid_action");
             exit;
     }
 
     try {
         $stmt = $conn->prepare($sql);
-        $stmt->bind_param("si", $new_value, $user_id);
+        $stmt->bind_param("si", $new_value, $target_user_id);
         $stmt->execute();
 
         if ($stmt->affected_rows > 0) {
+            // Send Email Notification
+            sendStatusEmail($target_user['email'], $target_user['fullname'], $email_action_type);
             header("Location: " . $redirect_url . "&op_status=success");
         } else {
-            throw new Exception("The user status was already up-to-date.");
+            header("Location: " . $redirect_url . "&op_status=warning&msg=No_changes_made");
         }
     } catch (Exception $e) {
         header("Location: " . $redirect_url . "&op_status=error&msg=" . urlencode($e->getMessage()));
     }
 
 } else {
-    // Redirect if user_id or action is missing
     header("Location: " . $redirect_url . "&op_status=error&msg=Missing_parameters");
 }
 
