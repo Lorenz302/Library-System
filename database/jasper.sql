@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 04, 2025 at 12:49 PM
+-- Generation Time: Nov 21, 2025 at 03:31 PM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
@@ -162,18 +162,20 @@ CREATE TABLE `users` (
   `email` varchar(255) NOT NULL,
   `password` varchar(255) NOT NULL,
   `user_id` int(11) NOT NULL,
-  `role` enum('student','librarian') NOT NULL DEFAULT 'student',
-  `status` varchar(50) NOT NULL DEFAULT 'Active'
+  `role` enum('student','librarian','admin') NOT NULL DEFAULT 'student',
+  `status` varchar(50) NOT NULL DEFAULT 'Active',
+  `otp_code` varchar(6) DEFAULT NULL,
+  `otp_expiry` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id_number`, `fullname`, `program_and_year`, `email`, `password`, `user_id`, `role`, `status`) VALUES
-(999999, 'Admin User', NULL, 'lorenzfeliciano12@gmail.com', '1', 2, 'librarian', 'Active'),
-(2201004, 'Van ryan samiano', 'IT-47', 'lorenzfeliciano303@gmail.com', '1', 4, 'student', 'Active'),
-(123456, 'Lorenz Feliciano', 'IT-4', 'soonecamz@gmail.com', 'asd', 5, 'student', 'Active');
+INSERT INTO `users` (`id_number`, `fullname`, `program_and_year`, `email`, `password`, `user_id`, `role`, `status`, `otp_code`, `otp_expiry`) VALUES
+(999999, 'Admin User', NULL, 'lorenzfeliciano12@gmail.com', '1', 2, 'librarian', 'Active', NULL, NULL),
+(2201004, 'Van ryan samiano', 'IT-47', 'lorenzfeliciano303@gmail.com', '1', 4, 'student', 'Active', NULL, NULL),
+(123456, 'Lorenz Feliciano', 'IT-4', 'soonecamz@gmail.com', 'asd', 5, 'librarian', 'Active', NULL, NULL);
 
 -- --------------------------------------------------------
 
