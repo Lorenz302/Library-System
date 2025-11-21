@@ -4,76 +4,67 @@
 session_start();
 include 'db_connect.php';
 
-// Set the header to return JSON
+// Include the mailer script
+require_once 'send_otp_email.php'; 
+
 header('Content-Type: application/json');
 
-// Initialize the response array
 $response = [
     'success' => false,
+    'otp_required' => false,
     'message' => 'An error occurred.',
+    'user_id' => null,
     'redirect' => ''
 ];
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    // Using mysqli_real_escape_string for security since we are building a raw SQL string.
     $id_number = mysqli_real_escape_string($conn, $_POST['id_number']);
     $email = mysqli_real_escape_string($conn, $_POST['email']);
     $password = mysqli_real_escape_string($conn, $_POST['password']);
 
-    // This query finds a user where all three plain-text fields match.
     $sql = "SELECT * FROM users WHERE id_number = '$id_number' AND email = '$email' AND password = '$password'";
     $result = $conn->query($sql);
 
-    // Check if exactly one user was found with these credentials
     if ($result->num_rows == 1) {
         $user = $result->fetch_assoc();
 
-        // =========================================================================
-        // ============================ THIS IS THE FIX ============================
-        // =========================================================================
-        // After finding the user, check if their account status is 'Active'.
         if ($user['status'] === 'Active') {
-            // --- LOGIN SUCCESSFUL ---
+            // --- LOGIN CREDENTIALS VALID ---
 
-            // Destroy the old session and create a new, clean one.
-            session_regenerate_id(true);
+            // 1. Generate OTP
+            $otp = rand(100000, 999999);
+            $expiry_time = date('Y-m-d H:i:s', strtotime('+5 minutes'));
 
-            // Set the session variables for the logged-in user.
-            $_SESSION['user_id'] = $user['user_id'];
-            $_SESSION['id_number'] = $user['id_number'];
-            $_SESSION['fullname'] = $user['fullname'];
-            $_SESSION['role'] = $user['role'];
+            // 2. Update DB
+            $update_sql = "UPDATE users SET otp_code = '$otp', otp_expiry = '$expiry_time' WHERE user_id = {$user['user_id']}";
             
-            // Prepare the success response
-            $response['success'] = true;
-            $response['message'] = 'Login successful!';
+            if ($conn->query($update_sql) === TRUE) {
+                // 3. SEND EMAIL
+                $emailSent = sendOtpEmail($user['email'], $otp);
 
-            // Set the redirect URL based on the user's role
-            if ($user['role'] == 'librarian') {
-                $response['redirect'] = '../frontend/admin_dashboard.php';
+                if ($emailSent) {
+                    $response['success'] = true;
+                    $response['otp_required'] = true;
+                    $response['message'] = "OTP sent to " . $user['email'];
+                    $response['user_id'] = $user['user_id'];
+                } else {
+                    $response['success'] = false;
+                    $response['message'] = 'Failed to send OTP email. Please check your internet connection or contact admin.';
+                }
+
             } else {
-                $response['redirect'] = '../frontend/home.php';
+                $response['message'] = 'Database error: ' . $conn->error;
             }
+            
         } else {
-            // --- ACCOUNT IS INACTIVE ---
-            // The credentials are correct, but the account is disabled. Deny login.
-            $response['success'] = false;
-            $response['message'] = 'Your account is inactive. Please contact the librarian for assistance.';
+            $response['message'] = 'Your account is inactive.';
         }
-        // =========================================================================
-        // ========================== END OF THE FIX ===============================
-        // =========================================================================
-
     } else {
-        // If num_rows is 0, the credentials are wrong.
-        $response['success'] = false;
         $response['message'] = 'Invalid ID Number, Email, or Password.';
     }
 }
 
 $conn->close();
-
-// Send the JSON response back to the JavaScript
 echo json_encode($response);
 exit();
 ?>
