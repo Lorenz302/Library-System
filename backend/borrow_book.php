@@ -1,84 +1,108 @@
 <?php
 // backend/borrow_book.php
 session_start();
+// Turn off error display to prevent HTML from breaking JSON
+ini_set('display_errors', 0);
+error_reporting(E_ALL);
+
 include 'db_connect.php';
 
-// Check if user is logged in and is a student
-if (!isset($_SESSION["id_number"]) || $_SESSION['role'] !== 'student') {
-    header('Content-Type: application/json');
-    echo json_encode(['status' => 'error', 'message' => 'Unauthorized access.']);
+// Set content type to JSON
+header('Content-Type: application/json');
+
+// Initialize response
+$response = ['success' => false, 'message' => 'An unknown error occurred.'];
+
+if (!isset($_SESSION['id_number']) || $_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['success' => false, 'message' => 'Unauthorized or invalid request.']);
     exit;
 }
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $book_id = (int)$_POST['book_id'];
-    $id_number = $_SESSION['id_number'];
-    $due_date = $_POST['return_date']; 
-    $borrow_date = date('Y-m-d');
+$id_number = $_SESSION['id_number'];
+$book_id = (int)$_POST['book_id'];
+$return_date = $_POST['return_date']; 
+$borrow_date = date('Y-m-d');
 
-    // --- FETCH ALL NECESSARY USER DETAILS ---
-    $user_sql = "SELECT fullname, email, program_and_year FROM users WHERE id_number = ? LIMIT 1";
-    $stmt_user = $conn->prepare($user_sql);
-    $stmt_user->bind_param("s", $id_number);
-    $stmt_user->execute();
-    $user_result = $stmt_user->get_result();
+// 1. Check if copies are available
+$check_sql = "SELECT available_copies, book_name FROM books WHERE book_id = ?";
+$stmt_check = $conn->prepare($check_sql);
+$stmt_check->bind_param("i", $book_id);
+$stmt_check->execute();
+$res = $stmt_check->get_result();
+$book = $res->fetch_assoc();
+$stmt_check->close();
+
+if ($book && $book['available_copies'] > 0) {
     
-    if ($user_result->num_rows > 0) {
-        $user = $user_result->fetch_assoc();
-        
-        $name_parts = explode(' ', $user['fullname'], 2);
-        $firstname = $name_parts[0];
-        $lastname = isset($name_parts[1]) ? $name_parts[1] : '';
+    // 2. Fetch User Details
+    $u_sql = "SELECT fullname, email, program_and_year FROM users WHERE id_number = ?";
+    $u_stmt = $conn->prepare($u_sql);
+    $u_stmt->bind_param("s", $id_number);
+    $u_stmt->execute();
+    $u_res = $u_stmt->get_result();
+    $u_data = $u_res->fetch_assoc();
+    $u_stmt->close();
 
-        $gsuit_account = $user['email'];
-        $program_and_year = $user['program_and_year'];
-
-    } else {
-        header("Location: ../frontend/home.php?borrow_status=error&msg=" . urlencode("User details not found."));
+    if (!$u_data) {
+        echo json_encode(['success' => false, 'message' => 'User details not found.']);
         exit;
     }
-    $stmt_user->close();
 
-    // Start a transaction to ensure data integrity
+    // Map Data
+    $fullname = trim($u_data['fullname']);
+    $parts = explode(' ', $fullname, 2); 
+    $firstname = $parts[0];
+    $lastname = isset($parts[1]) ? $parts[1] : ''; 
+
+    $gsuit_account = $u_data['email'];
+    $program = $u_data['program_and_year'];
+
     $conn->begin_transaction();
 
     try {
-        // 1. Check if the book has available copies and lock the row for update
-        $check_sql = "SELECT available_copies FROM books WHERE book_id = ? AND available_copies > 0 FOR UPDATE";
-        $stmt_check = $conn->prepare($check_sql);
-        $stmt_check->bind_param("i", $book_id);
-        $stmt_check->execute();
+        // 3. Insert Request
+        $sql_insert = "INSERT INTO borrow_requests 
+            (id_number, firstname, lastname, gsuit_account, program_and_year, book_id, borrow_date, due_date, borrow_status, is_overdue_notified) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Pending', 0)";
         
-        if ($stmt_check->get_result()->num_rows > 0) {
-            // 2. Insert the borrow request with all the fetched user details
-            $insert_sql = "INSERT INTO borrow_requests 
-                           (id_number, firstname, lastname, gsuit_account, program_and_year, book_id, borrow_date, due_date) 
-                           VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-            $stmt_insert = $conn->prepare($insert_sql);
-            $stmt_insert->bind_param("sssssiss", $id_number, $firstname, $lastname, $gsuit_account, $program_and_year, $book_id, $borrow_date, $due_date);
-            $stmt_insert->execute();
-
-            $conn->commit();
-            header("Location: ../frontend/home.php?borrow_status=success");
-
-        } else {
-            throw new Exception("No available copies of this book to borrow.");
+        $stmt_insert = $conn->prepare($sql_insert);
+        if (!$stmt_insert) {
+            throw new Exception("Prepare failed: " . $conn->error);
         }
+
+        // ============================================================
+        // FIX IS HERE: "sssssiss" (8 characters for 8 variables)
+        // ============================================================
+        $stmt_insert->bind_param("sssssiss", $id_number, $firstname, $lastname, $gsuit_account, $program, $book_id, $borrow_date, $return_date);
+        
+        if (!$stmt_insert->execute()) {
+            throw new Exception("Execute failed: " . $stmt_insert->error);
+        }
+        $stmt_insert->close();
+
+        // 4. Decrease Quantity
+        $sql_update = "UPDATE books SET available_copies = available_copies - 1 WHERE book_id = ?";
+        $stmt_update = $conn->prepare($sql_update);
+        $stmt_update->bind_param("i", $book_id);
+        $stmt_update->execute();
+        $stmt_update->close();
+
+        $conn->commit();
+        
+        $response['success'] = true;
+        $response['message'] = 'Request submitted successfully!';
 
     } catch (Exception $e) {
         $conn->rollback();
-        // =========================================================================
-        // ============================ THIS IS THE FIX ============================
-        // =========================================================================
-        // Changed the incorrect period (.) to an arrow (->) to correctly call the method
-        header("Location: ../frontend/home.php?borrow_status=error&msg=" . urlencode($e->getMessage()));
-        // =========================================================================
-    } finally {
-        if (isset($stmt_check)) $stmt_check->close();
-        if (isset($stmt_insert)) $stmt_insert->close();
-        $conn->close();
+        $response['success'] = false;
+        $response['message'] = 'Database Error: ' . $e->getMessage();
     }
-    
-    exit;
+} else {
+    $response['success'] = false;
+    $response['message'] = 'This book is currently out of stock.';
 }
+
+$conn->close();
+echo json_encode($response);
+exit;
 ?>
