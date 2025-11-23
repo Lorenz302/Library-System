@@ -266,6 +266,21 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
         fetchDashboardData(); // Fetch immediately
         setInterval(fetchDashboardData, 3000); // Poll every 3 seconds
 
+
+        // --- 3.1? (I DONT KNOW) AUTOMATED OVERDUE CHECKER (The "Cron Job") ---
+        // This runs silently in the background every 10 seconds to check for overdue books
+        async function triggerOverdueChecks() {
+            try {
+                await fetch('../backend/auto_overdue_mailer.php');
+                // We don't need to log anything to console to keep it clean
+            } catch (error) {
+                console.error("Auto-mailer error:", error);
+            }
+        }
+
+        // Run immediately and then every 10 seconds
+        triggerOverdueChecks();
+        setInterval(triggerOverdueChecks, 10000);
     </script>
 </body>
 </html>
