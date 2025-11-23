@@ -1,117 +1,212 @@
 <?php
-// backend/update_user_status.php
-
+// backend/update_request_status.php
 session_start();
 include 'db_connect.php';
-require_once 'send_status_email.php';
+require_once 'send_request_email.php';
 
-// 1. SECURITY CHECK: Allow both Admin and Librarian
-$allowed_roles = ['admin', 'librarian'];
-if (!isset($_SESSION['user_id']) || !in_array($_SESSION['role'], $allowed_roles) || $_SERVER["REQUEST_METHOD"] !== "POST") {
-    header("Location: ../frontend/index.html");
-    exit;
+// Security Check
+if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'librarian') {
+    die("Unauthorized access.");
 }
 
-$current_user_role = $_SESSION['role'];
-$action = $_POST['action'] ?? '';
-$target_user_id = (int)($_POST['user_id'] ?? 0);
-
-// Prevent self-action
-if ($target_user_id === (int)$_SESSION['user_id']) {
-    die("Error: You cannot perform this action on your own account.");
+if (!isset($_POST['action'], $_POST['request_id'])) {
+    die("Invalid request.");
 }
 
-// Redirect URL logic
-$redirect_params = [
-    'search' => $_POST['search'] ?? '',
-    'role' => $_POST['role'] ?? 'all',
-    'status' => $_POST['status'] ?? 'all',
-    'page' => $_POST['page'] ?? 1
-];
-$redirect_url = "../frontend/manage_users.php?" . http_build_query($redirect_params);
+$action = $_POST['action'];
+$request_id = (int)$_POST['request_id'];
+$request_type = $_POST['request_type'] ?? '';
+$book_id = (int)($_POST['book_id'] ?? 0);
+$user_id_number = $_POST['user_id_number'] ?? '';
 
-if ($target_user_id > 0 && !empty($action)) {
-    
-    // Fetch target user data to check THEIR role and get email
-    $user_query = "SELECT fullname, email, role FROM users WHERE user_id = $target_user_id";
-    $user_result = $conn->query($user_query);
-    $target_user = $user_result->fetch_assoc();
+// 1. Fetch User Details
+$user_sql = "SELECT fullname, email FROM users WHERE id_number = ?";
+$stmt_user = $conn->prepare($user_sql);
+$stmt_user->bind_param("s", $user_id_number);
+$stmt_user->execute();
+$user_data = $stmt_user->get_result()->fetch_assoc();
+$stmt_user->close();
 
-    if (!$target_user) {
-        header("Location: " . $redirect_url . "&op_status=error&msg=User_not_found");
-        exit;
-    }
+// 2. Fetch Book Details
+$book_sql = "SELECT book_name FROM books WHERE book_id = ?";
+$stmt_book = $conn->prepare($book_sql);
+$stmt_book->bind_param("i", $book_id);
+$stmt_book->execute();
+$book_data = $stmt_book->get_result()->fetch_assoc();
+$stmt_book->close();
 
-    // ==================================================================
-    // ==================== PERMISSION GATES (FIXED) ====================
-    // ==================================================================
+$recipientEmail = $user_data['email'] ?? '';
+$recipientName = $user_data['fullname'] ?? 'Student';
+$bookTitle = $book_data['book_name'] ?? 'Book';
 
-    // Rule 1: Librarians can ONLY manage 'student' accounts.
-    // They cannot touch 'admin' OR other 'librarian' accounts.
-    if ($current_user_role === 'librarian') {
-        if ($target_user['role'] === 'admin' || $target_user['role'] === 'librarian') {
-            die("Error: Librarians can only manage Students. You cannot modify this account.");
-        }
-    }
+$conn->begin_transaction();
 
-    // Rule 2: Only Admins can Promote or Demote (Already correct, but keeping for safety)
-    if (($action === 'promote' || $action === 'demote') && $current_user_role !== 'admin') {
-        die("Error: Only Administrators can change user roles.");
-    }
-
-    // ==================================================================
-
-    // --- PROCESS ACTION ---
-    $sql = "";
-    $new_value = "";
-    $email_action_type = "";
+try {
+    $emailAction = "";
 
     switch ($action) {
-        case 'activate':
-            $sql = "UPDATE users SET status = ? WHERE user_id = ?";
-            $new_value = 'Active';
-            $email_action_type = 'activate';
+        // ============================================================
+        // BORROW REQUEST ACTIONS
+        // ============================================================
+        
+        case 'Approve':
+            // Quantity already deducted on request. Just update status.
+            $stmt = $conn->prepare("UPDATE borrow_requests SET borrow_status = 'Approved' WHERE borrow_id = ? AND borrow_status = 'Pending'");
+            $stmt->bind_param("i", $request_id);
+            $stmt->execute();
+            $emailAction = "Approve";
             break;
-        case 'ban':
-            $sql = "UPDATE users SET status = ? WHERE user_id = ?";
-            $new_value = 'Banned'; 
-            $email_action_type = 'ban';
+
+        case 'Reject':
+            // Denied. Return copy.
+            $stmt_update = $conn->prepare("UPDATE borrow_requests SET borrow_status = 'Rejected', due_date = NULL, return_date = NULL WHERE borrow_id = ?");
+            $stmt_update->bind_param("i", $request_id);
+            $stmt_update->execute();
+
+            $stmt_book = $conn->prepare("UPDATE books SET available_copies = available_copies + 1 WHERE book_id = ?");
+            $stmt_book->bind_param("i", $book_id);
+            $stmt_book->execute();
+            
+            $emailAction = "Reject";
             break;
-        case 'promote':
-            $sql = "UPDATE users SET role = ? WHERE user_id = ?";
-            $new_value = 'librarian'; 
-            $email_action_type = 'promote';
+
+        case 'MarkPickedUp':
+            // Student took the book. Status change only.
+            $stmt = $conn->prepare("UPDATE borrow_requests SET borrow_status = 'Borrowed' WHERE borrow_id = ?");
+            $stmt->bind_param("i", $request_id);
+            $stmt->execute();
             break;
-        case 'demote':
-            $sql = "UPDATE users SET role = ? WHERE user_id = ?";
-            $new_value = 'student';
-            $email_action_type = 'demote';
+
+        // ============================================================
+        // NEW ACTION: MARK FAILED PICKUP (For Approved Borrows)
+        // ============================================================
+        case 'MarkFailedPickup':
+            // Student didn't show up. 
+            // 1. Mark as 'Expired' (so it goes to history)
+            $stmt = $conn->prepare("UPDATE borrow_requests SET borrow_status = 'Expired' WHERE borrow_id = ?");
+            $stmt->bind_param("i", $request_id);
+            $stmt->execute();
+
+            // 2. Return the book copy
+            $stmt_book = $conn->prepare("UPDATE books SET available_copies = available_copies + 1 WHERE book_id = ?");
+            $stmt_book->bind_param("i", $book_id);
+            $stmt_book->execute();
+
+            // 3. Send Email (Reuse 'MarkAsExpired' template which says "reservation expired/not picked up")
+            $emailAction = "MarkAsExpired";
             break;
-        default:
-            header("Location: " . $redirect_url . "&op_status=error&msg=Invalid_action");
-            exit;
+
+        case 'MarkReturned':
+            $stmt = $conn->prepare("UPDATE borrow_requests SET borrow_status = 'Returned', return_date = NOW() WHERE borrow_id = ?");
+            $stmt->bind_param("i", $request_id);
+            $stmt->execute();
+            $emailAction = 'MarkReturned';
+
+            // Check Queue
+            $stmt_next = $conn->prepare("SELECT reservation_id, id_number FROM reservation_requests WHERE book_id = ? AND reservation_status = 'Pending' ORDER BY reservation_date ASC LIMIT 1");
+            $stmt_next->bind_param("i", $book_id);
+            $stmt_next->execute();
+            $res_next = $stmt_next->get_result();
+
+            if ($res_next->num_rows > 0) {
+                $next_res = $res_next->fetch_assoc();
+                $stmt_upd = $conn->prepare("UPDATE reservation_requests SET reservation_status = 'Available', notified_date = NOW(), pickup_expiry_date = NOW() + INTERVAL 48 HOUR WHERE reservation_id = ?");
+                $stmt_upd->bind_param("i", $next_res['reservation_id']);
+                $stmt_upd->execute();
+
+                // Notify Next
+                $next_user_sql = "SELECT fullname, email FROM users WHERE id_number = ?";
+                $stmt_nu = $conn->prepare($next_user_sql);
+                $stmt_nu->bind_param("s", $next_res['id_number']);
+                $stmt_nu->execute();
+                $next_user = $stmt_nu->get_result()->fetch_assoc();
+                if ($next_user) {
+                    sendRequestStatusEmail($next_user['email'], $next_user['fullname'], $bookTitle, 'Available');
+                }
+            } else {
+                $stmt_bk = $conn->prepare("UPDATE books SET available_copies = available_copies + 1 WHERE book_id = ?");
+                $stmt_bk->bind_param("i", $book_id);
+                $stmt_bk->execute();
+            }
+            break;
+
+        // ... Reservations ...
+        case 'Fulfill':
+            $stmt = $conn->prepare("UPDATE reservation_requests SET reservation_status = 'Fulfilled' WHERE reservation_id = ?");
+            $stmt->bind_param("i", $request_id);
+            $stmt->execute();
+            $borrow_date = date('Y-m-d');
+            $due_date = date('Y-m-d', strtotime('+14 days'));
+            // Note: Assuming id_number/details are correct for this flow or fetched if needed. 
+            // For strict consistency, we use $user_id_number passed from form.
+            $stmt_ins = $conn->prepare("INSERT INTO borrow_requests (id_number, book_id, borrow_date, due_date, borrow_status) VALUES (?, ?, ?, ?, 'Borrowed')");
+            $stmt_ins->bind_param("siss", $user_id_number, $book_id, $borrow_date, $due_date);
+            $stmt_ins->execute();
+            break;
+
+        case 'CancelReservation':
+            $stmt = $conn->prepare("UPDATE reservation_requests SET reservation_status = 'Cancelled' WHERE reservation_id = ?");
+            $stmt->bind_param("i", $request_id);
+            $stmt->execute();
+            $emailAction = "Reject"; 
+            break;
+
+        case 'MarkAsExpired':
+            $stmt = $conn->prepare("UPDATE reservation_requests SET reservation_status = 'Expired' WHERE reservation_id = ?");
+            $stmt->bind_param("i", $request_id);
+            $stmt->execute();
+            $emailAction = "MarkAsExpired";
+
+            // Check Queue
+            $stmt_next2 = $conn->prepare("SELECT reservation_id, id_number FROM reservation_requests WHERE book_id = ? AND reservation_status = 'Pending' ORDER BY reservation_date ASC LIMIT 1");
+            $stmt_next2->bind_param("i", $book_id);
+            $stmt_next2->execute();
+            $res_next2 = $stmt_next2->get_result();
+
+            if ($res_next2->num_rows > 0) {
+                $next_res2 = $res_next2->fetch_assoc();
+                $stmt_upd2 = $conn->prepare("UPDATE reservation_requests SET reservation_status = 'Available', notified_date = NOW(), pickup_expiry_date = NOW() + INTERVAL 48 HOUR WHERE reservation_id = ?");
+                $stmt_upd2->bind_param("i", $next_res2['reservation_id']);
+                $stmt_upd2->execute();
+                
+                $next_user_sql2 = "SELECT fullname, email FROM users WHERE id_number = ?";
+                $stmt_nu2 = $conn->prepare($next_user_sql2);
+                $stmt_nu2->bind_param("s", $next_res2['id_number']);
+                $stmt_nu2->execute();
+                $next_user2 = $stmt_nu2->get_result()->fetch_assoc();
+                if($next_user2) {
+                    sendRequestStatusEmail($next_user2['email'], $next_user2['fullname'], $bookTitle, 'Available');
+                }
+            } else {
+                $stmt_bk2 = $conn->prepare("UPDATE books SET available_copies = available_copies + 1 WHERE book_id = ?");
+                $stmt_bk2->bind_param("i", $book_id);
+                $stmt_bk2->execute();
+            }
+            break;
+
+        case 'NotifyOverdue':
+            $stmt = $conn->prepare("UPDATE borrow_requests SET is_overdue_notified = 1 WHERE borrow_id = ?");
+            $stmt->bind_param("i", $request_id);
+            $stmt->execute();
+            $emailAction = "Overdue";
+            break;
     }
 
-    try {
-        $stmt = $conn->prepare($sql);
-        $stmt->bind_param("si", $new_value, $target_user_id);
-        $stmt->execute();
+    $conn->commit();
 
-        if ($stmt->affected_rows > 0) {
-            // Send Email Notification
-            sendStatusEmail($target_user['email'], $target_user['fullname'], $email_action_type);
-            header("Location: " . $redirect_url . "&op_status=success");
-        } else {
-            header("Location: " . $redirect_url . "&op_status=warning&msg=No_changes_made");
-        }
-    } catch (Exception $e) {
-        header("Location: " . $redirect_url . "&op_status=error&msg=" . urlencode($e->getMessage()));
+    if (!empty($emailAction) && !empty($recipientEmail)) {
+        sendRequestStatusEmail($recipientEmail, $recipientName, $bookTitle, $emailAction);
     }
 
-} else {
-    header("Location: " . $redirect_url . "&op_status=error&msg=Missing_parameters");
+    $status = 'success';
+} catch (Exception $e) {
+    $conn->rollback();
+    $status = 'error';
 }
 
-$conn->close();
+$query = $_POST;
+unset($query['action'], $query['request_id'], $query['request_type'], $query['book_id'], $query['user_id_number']);
+$query['update'] = $status;
+header("Location: ../frontend/manage_requests.php?" . http_build_query($query));
 exit;
 ?>
