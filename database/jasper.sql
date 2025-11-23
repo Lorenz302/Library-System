@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Nov 21, 2025 at 03:31 PM
+-- Generation Time: Nov 23, 2025 at 11:27 AM
 -- Server version: 10.4.28-MariaDB
 -- PHP Version: 8.2.4
 
@@ -45,11 +45,11 @@ CREATE TABLE `books` (
 --
 
 INSERT INTO `books` (`book_id`, `book_name`, `book_description`, `category`, `favorite`, `author`, `publication_year`, `total_copies`, `available_copies`, `book_image_path`) VALUES
-(2, 'blue', 'blue', 'Electronics', 0, 'lorens', '2011', 5, 5, 'Book_Images/book_690461b11a09d8.33575919.jpg'),
-(3, 'red', 'garatihin kita', 'Martial arts', 0, 'james', '2023', 5, 5, 'Book_Images/book_690461b6c54be7.31502369.jpg'),
+(2, 'blue', 'blue', 'Electronics', 0, 'lorens', '2011', 5, 4, 'Book_Images/book_690461b11a09d8.33575919.jpg'),
+(3, 'red', 'garatihin kita', 'Martial arts', 0, 'james', '2023', 5, 4, 'Book_Images/book_690461b6c54be7.31502369.jpg'),
 (4, 'yellow', 'taba', 'cookbook', 0, 'chrsitian', '2012', 5, 5, 'Book_Images/book_690461d77b5cd9.39305234.jpg'),
 (5, 'template1', 'asd', 'Breakfast', 0, 'chrsitian', '2012', 1, 1, 'Book_Images/book_69045d7f042b40.04259692.jpeg'),
-(6, 'templat2', 'wad', 'Breakfast', 0, 'chrsitian', '2010', 23, 23, 'Book_Images/book_690461ce4e7b24.68065226.jpg');
+(6, 'templat2', 'wad', 'Breakfast', 0, 'chrsitian', '2010', 23, 21, 'Book_Images/book_690461ce4e7b24.68065226.jpg');
 
 -- --------------------------------------------------------
 
@@ -67,42 +67,51 @@ CREATE TABLE `borrow_requests` (
   `borrow_date` date NOT NULL,
   `due_date` date DEFAULT NULL,
   `return_date` date NOT NULL,
-  `borrow_status` varchar(255) NOT NULL DEFAULT 'Pending',
-  `book_id` int(11) NOT NULL
+  `borrow_status` enum('Pending','Approved','Borrowed','Returned','Rejected','Expired','Cancelled') DEFAULT 'Pending',
+  `book_id` int(11) NOT NULL,
+  `is_overdue_notified` tinyint(1) DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `borrow_requests`
 --
 
-INSERT INTO `borrow_requests` (`borrow_id`, `id_number`, `firstname`, `lastname`, `gsuit_account`, `program_and_year`, `borrow_date`, `due_date`, `return_date`, `borrow_status`, `book_id`) VALUES
-(15, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'N/A', '2025-10-31', NULL, '2025-11-07', 'Returned', 2),
-(29, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-3', '2025-10-31', '2025-11-12', '2025-10-31', 'Returned', 3),
-(30, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-12', '2025-10-31', 'Returned', 5),
-(31, 2201004, '', '', '', '', '2025-10-31', '2025-11-14', '2025-10-31', 'Returned', 5),
-(32, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-12', '2025-10-31', 'Returned', 5),
-(33, 2201004, '', '', '', '', '2025-10-31', '2025-11-14', '2025-10-31', 'Returned', 5),
-(34, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-13', '2025-10-31', 'Returned', 5),
-(35, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-12', '2025-10-31', 'Returned', 5),
-(39, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-02', '2025-10-31', 'Returned', 5),
-(40, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-04', '2025-10-31', 'Returned', 5),
-(41, 123456, '', '', '', '', '2025-10-31', '2025-11-14', '2025-10-31', 'Returned', 5),
-(42, 2201004, '', '', '', '', '2025-10-31', '2025-11-14', '2025-10-31', 'Returned', 5),
-(43, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', '2025-11-01', '2025-10-31', 'Returned', 5),
-(44, 123456, '', '', '', '', '2025-10-31', '2025-11-14', '2025-10-31', 'Returned', 5),
-(45, 2201004, '', '', '', '', '2025-10-31', '2025-11-14', '2025-10-31', 'Returned', 5),
-(47, 123456, 'Lorenz', 'Feliciano', 'soonecamz@gmail.com', 'IT-4', '2025-10-31', '2025-11-02', '2025-10-31', 'Returned', 4),
-(48, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', '2025-11-01', '2025-10-31', 'Returned', 2),
-(49, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', '2025-11-22', '2025-10-31', 'Returned', 6),
-(51, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 2),
-(52, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 4),
-(53, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 2),
-(54, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 2),
-(55, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', '2025-11-02', '2025-10-31', 'Returned', 2),
-(56, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 5),
-(57, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 2),
-(58, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 6),
-(59, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 6);
+INSERT INTO `borrow_requests` (`borrow_id`, `id_number`, `firstname`, `lastname`, `gsuit_account`, `program_and_year`, `borrow_date`, `due_date`, `return_date`, `borrow_status`, `book_id`, `is_overdue_notified`) VALUES
+(15, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'N/A', '2025-10-31', NULL, '2025-11-07', 'Returned', 2, 0),
+(29, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-3', '2025-10-31', '2025-11-12', '2025-10-31', 'Returned', 3, 0),
+(30, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-12', '2025-10-31', 'Returned', 5, 0),
+(31, 2201004, '', '', '', '', '2025-10-31', '2025-11-14', '2025-10-31', 'Returned', 5, 0),
+(32, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-12', '2025-10-31', 'Returned', 5, 0),
+(34, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-13', '2025-10-31', 'Returned', 5, 0),
+(35, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-12', '2025-10-31', 'Returned', 5, 0),
+(39, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-02', '2025-10-31', 'Returned', 5, 0),
+(40, 2201004, 'Lorenz', 'Feliciano', 'lorenzfeliciano303@gmail.com', 'IT-4', '2025-10-31', '2025-11-04', '2025-10-31', 'Returned', 5, 0),
+(43, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', '2025-11-01', '2025-10-31', 'Returned', 5, 0),
+(47, 123456, 'Lorenz', 'Feliciano', 'soonecamz@gmail.com', 'IT-4', '2025-10-31', '2025-11-02', '2025-10-31', 'Returned', 4, 0),
+(48, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', '2025-11-01', '2025-10-31', 'Returned', 2, 0),
+(49, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', '2025-11-22', '2025-10-31', 'Returned', 6, 0),
+(51, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 2, 0),
+(52, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 4, 0),
+(53, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 2, 0),
+(54, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 2, 0),
+(55, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', '2025-11-02', '2025-10-31', 'Returned', 2, 0),
+(56, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 5, 0),
+(57, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 2, 0),
+(58, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 6, 0),
+(59, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-10-31', NULL, '0000-00-00', 'Rejected', 6, 0),
+(60, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-11-23', '2025-11-24', '2025-11-23', 'Returned', 2, 0),
+(61, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-11-23', '2025-11-23', '2025-11-23', 'Returned', 2, 0),
+(62, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-11-23', '2025-11-25', '2025-11-23', 'Returned', 2, 0),
+(63, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-11-23', '2025-11-24', '2025-11-23', 'Returned', 3, 0),
+(64, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-11-23', '2025-11-24', '2025-11-23', 'Returned', 2, 0),
+(65, 2201004, '', '', '', '', '2025-11-23', '2025-11-24', '2025-11-23', 'Returned', 2, 0),
+(66, 2201004, '', '', '', '', '2025-11-23', '2025-11-25', '2025-11-23', 'Returned', 2, 0),
+(67, 2201004, '', '', '', '', '2025-11-23', '2025-11-25', '2025-11-23', 'Returned', 2, 0),
+(68, 2201004, '', '', '', '', '2025-11-23', '2025-11-22', '2025-11-23', 'Returned', 2, 0),
+(69, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-11-23', '2025-11-22', '2025-11-23', 'Returned', 2, 0),
+(70, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-11-23', '2025-11-22', '2025-11-23', 'Returned', 3, 0),
+(76, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-11-21', '2025-11-22', '2025-11-23', 'Returned', 3, 1),
+(77, 2201004, 'Van', 'ryan samiano', 'lorenzfeliciano303@gmail.com', 'IT-47', '2025-11-23', '2025-11-24', '0000-00-00', 'Expired', 2, 0);
 
 -- --------------------------------------------------------
 
@@ -260,7 +269,7 @@ ALTER TABLE `books`
 -- AUTO_INCREMENT for table `borrow_requests`
 --
 ALTER TABLE `borrow_requests`
-  MODIFY `borrow_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=60;
+  MODIFY `borrow_id` bigint(20) UNSIGNED NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=78;
 
 --
 -- AUTO_INCREMENT for table `notification`
