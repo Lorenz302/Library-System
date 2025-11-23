@@ -4,22 +4,22 @@ session_start();
 include 'db_connect.php';
 header('Content-Type: application/json');
 
+// Set Timezone
+date_default_timezone_set('Asia/Manila'); 
+
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'librarian') {
     echo json_encode([]);
     exit;
 }
 
-// Get filters from AJAX request
 $search_term = $_GET['search'] ?? '';
 $filter_type = $_GET['type'] ?? 'all';
 $filter_status = $_GET['status'] ?? 'all';
 $sort_order = $_GET['sort'] ?? 'DESC';
 
-if (!in_array(strtoupper($sort_order), ['ASC', 'DESC'])) {
-    $sort_order = 'DESC';
-}
+if (!in_array(strtoupper($sort_order), ['ASC', 'DESC'])) { $sort_order = 'DESC'; }
 
-// Base Query (Same as manage_requests.php logic)
+// Base Query
 $base_query = "
     (SELECT 
         br.borrow_id AS request_id, 
@@ -77,25 +77,31 @@ if ($filter_status !== 'all') {
 
 $where_clause = !empty($conditions) ? " WHERE " . implode(" AND ", $conditions) : "";
 
-// NOTE: Pagination is handled by Frontend logic or simple scrolling for the API
-// For simplicity in the poller, we fetch the top 50 recent items to keep it fast
 $limit = 50; 
-
 $data_sql = "$final_base_query $where_clause ORDER BY request_date $sort_order LIMIT ?";
 $stmt = $conn->prepare($data_sql);
-
 $params[] = $limit;
 $types .= 'i';
-
 $stmt->bind_param($types, ...$params);
 $stmt->execute();
 $result = $stmt->get_result();
 
 $data = [];
+$today = date('Y-m-d');
+
 while ($row = $result->fetch_assoc()) {
-    // Format dates for JSON
     $row['request_date_formatted'] = date('Y-m-d', strtotime($row['request_date']));
     $row['relevant_date_formatted'] = !empty($row['relevant_date']) ? date('Y-m-d', strtotime($row['relevant_date'])) : 'N/A';
+    
+    // CALCULATE OVERDUE
+    $row['is_overdue'] = false;
+    if ($row['status'] === 'Borrowed' && !empty($row['relevant_date'])) {
+        // If Due Date is strictly LESS than Today
+        if ($row['relevant_date'] < $today) {
+            $row['is_overdue'] = true;
+        }
+    }
+
     $data[] = $row;
 }
 
