@@ -61,6 +61,12 @@ function sendRequestStatusEmail($recipientEmail, $recipientName, $bookTitle, $ac
                 $messageBody = "Your reservation for <strong>$bookTitle</strong> has expired because it was not picked up in time.";
                 $color = "#95a5a6"; // Grey
                 break;
+            case 'Overdue':
+                $subject = "URGENT: Overdue Book Notice";
+                $headerTitle = "Action Required";
+                $messageBody = "This is a reminder that the book <strong>$bookTitle</strong> is now <span style='color:red; font-weight:bold;'>OVERDUE</span>.<br><br>Please return it to the library immediately to avoid penalties.";
+                $color = "#c0392b"; // Dark Red
+                break;
         }
 
         // --- HTML TEMPLATE ---
