@@ -21,23 +21,18 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
     <style>
         /* --- REVAMPED DARK STYLES --- */
         .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
-        
         .filter-form { display: flex; gap: 10px; width: 100%; }
         .filter-form input, .filter-form select { padding: 10px 15px; border-radius: 6px; border: 1px solid #4b5563; background: #1f2937; color: #f3f4f6; outline: none; }
-        
         .table-container { background-color: #1f2937; border-radius: 12px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); overflow: hidden; border: 1px solid #374151; }
         table { width: 100%; border-collapse: collapse; color: #e5e7eb; font-size: 0.95rem; }
-        
         thead tr { background-color: #111827; text-align: left; }
         th { padding: 18px 24px; font-weight: 700; text-transform: uppercase; font-size: 0.75rem; color: #9ca3af; border-bottom: 1px solid #374151; }
-        
         tbody tr { border-bottom: 1px solid #374151; transition: background-color 0.15s ease; }
         tbody tr:hover { background-color: #374151; }
         td { padding: 16px 24px; vertical-align: middle; }
 
-        /* Status Badges */
+        /* Badges */
         .badge { display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-        
         .status-pending { background-color: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
         .status-approved { background-color: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); }
         .status-available { background-color: rgba(52, 211, 153, 0.2); color: #6ee7b7; border: 1px solid rgba(52, 211, 153, 0.2); }
@@ -46,21 +41,16 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
         /* Buttons */
         .action-buttons form { display: flex; gap: 8px; }
         .btn-mini { padding: 6px 12px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; color: white; }
-        
         .btn-approve { background-color: #10b981; } .btn-approve:hover { background-color: #059669; }
         .btn-reject { background-color: #ef4444; } .btn-reject:hover { background-color: #dc2626; }
         .btn-pickup { background-color: #3b82f6; } .btn-pickup:hover { background-color: #2563eb; }
-        .btn-return { background-color: #8b5cf6; } .btn-return:hover { background-color: #7c3aed; } /* Purple */
-        .btn-fulfill { background-color: #ec4899; } .btn-fulfill:hover { background-color: #db2777; } /* Pink */
+        .btn-return { background-color: #8b5cf6; } .btn-return:hover { background-color: #7c3aed; }
+        .btn-fulfill { background-color: #ec4899; } .btn-fulfill:hover { background-color: #db2777; }
+        .btn-notify { background-color: #e11d48; } .btn-notify:hover { background-color: #be123c; } 
+        .btn-failed { background-color: #f97316; } .btn-failed:hover { background-color: #ea580c; } /* Orange for Failed Pickup */
 
-        /* Loading */
         #loading-indicator { font-size: 12px; color: #f59e0b; margin-left: 10px; display: none; }
-        
-        /* Info Icon */
         .info-icon { cursor: pointer; color: #9ca3af; margin-left: 10px; font-size: 1.2rem; }
-        .info-icon:hover { color: white; }
-        
-        /* Modal (kept simple) */
         .info-modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); align-items: center; justify-content: center; }
         .info-modal-content { background: #1f2937; color: #f3f4f6; padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; position: relative; border: 1px solid #374151; }
         .info-modal-close { position: absolute; top: 10px; right: 15px; font-size: 1.5rem; cursor: pointer; }
@@ -142,7 +132,6 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
         </div>
     </div>
 
-    <!-- Info Modal -->
     <div id="infoModal" class="info-modal">
         <div class="info-modal-content">
             <span id="infoModalClose" class="info-modal-close">&times;</span>
@@ -164,7 +153,6 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
         const sortFilter = document.getElementById('sortFilter');
         const loadingIndicator = document.getElementById('loading-indicator');
 
-        // Modal Logic
         const infoModal = document.getElementById('infoModal');
         document.getElementById('infoBtn').onclick = () => infoModal.style.display = 'flex';
         document.getElementById('infoModalClose').onclick = () => infoModal.style.display = 'none';
@@ -192,7 +180,6 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
 
             let html = '';
             data.forEach(row => {
-                // Generate Buttons based on status
                 let buttons = '';
                 const hiddenInputs = `
                     <input type="hidden" name="request_id" value="${row.request_id}">
@@ -210,9 +197,16 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
                         buttons = `<button type="submit" name="action" value="Approve" class="btn-mini btn-approve">Approve</button>
                                    <button type="submit" name="action" value="Reject" class="btn-mini btn-reject">Reject</button>`;
                     } else if (row.status === 'Approved') {
-                        buttons = `<button type="submit" name="action" value="MarkPickedUp" class="btn-mini btn-pickup">Picked Up</button>`;
+                        // ==================================================
+                        // ADDED: "Did Not Pickup" button alongside "Picked Up"
+                        // ==================================================
+                        buttons = `<button type="submit" name="action" value="MarkPickedUp" class="btn-mini btn-pickup">Picked Up</button>
+                                   <button type="submit" name="action" value="MarkFailedPickup" class="btn-mini btn-failed" onclick="return confirm('Mark this as Not Picked Up? (Returns book to inventory)');">Did Not Pickup</button>`;
                     } else if (row.status === 'Borrowed') {
                         buttons = `<button type="submit" name="action" value="MarkReturned" class="btn-mini btn-return">Returned</button>`;
+                        if (row.is_overdue) {
+                            buttons += `<button type="submit" name="action" value="NotifyOverdue" class="btn-mini btn-notify" onclick="return confirm('Send Overdue Email Notice?');">Notify</button>`;
+                        }
                     }
                 } else if (row.request_type === 'Reservation') {
                     if (row.status === 'Pending') {
@@ -223,12 +217,17 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
                     }
                 }
 
+                let dateDisplay = row.relevant_date_formatted;
+                if (row.is_overdue) {
+                    dateDisplay += ' <span style="color:#f87171; font-weight:bold; font-size:0.7em;">(OVERDUE)</span>';
+                }
+
                 html += `
                     <tr>
                         <td><strong>${row.user_name}</strong></td>
                         <td>${row.book_title}</td>
                         <td>${row.request_date_formatted}</td>
-                        <td style="color:#d1d5db;">${row.relevant_date_formatted}</td>
+                        <td style="color:#d1d5db;">${dateDisplay}</td>
                         <td>${row.request_type}</td>
                         <td><span class="badge status-${row.status.toLowerCase()}">${row.status}</span></td>
                         <td class="action-buttons">
