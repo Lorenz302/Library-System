@@ -72,8 +72,43 @@ $all_books_result = $stmt_books->get_result();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="home.css">
     <title>Bataan Heroes College Library</title>
+    <style>
+        /* Toast Notification Styles */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+        .toast {
+            background-color: #333;
+            color: #fff;
+            padding: 15px 20px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.5s ease;
+            min-width: 250px;
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .toast.success { border-left: 5px solid #2ecc71; }
+        .toast.error { border-left: 5px solid #e74c3c; }
+        .toast-content { flex-grow: 1; }
+        .toast-close { cursor: pointer; margin-left: 10px; font-weight: bold; }
+    </style>
 </head>
 <body>
+    
+    <!-- Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
     <header class="header">
         <div class="logo-container">
             <img src="LIBRARY_LOGO.png" alt="Logo">
@@ -87,7 +122,7 @@ $all_books_result = $stmt_books->get_result();
             </ul>
         </nav>
         <div class="prof-notif-icon" >
-            <img class="notification-icons" src="NOTIF-ICON.png" alt="Notification">
+            
             <button id="profileBtn" class="profile-btn" title="View Profile">
                 <img class="profile-icons" src="profile-icon.png" alt="Profile">
             </button>
@@ -167,8 +202,9 @@ $all_books_result = $stmt_books->get_result();
             while($fav_row = $result_favorites->fetch_assoc()) { $favorite_book_ids[] = $fav_row['book_id']; }
             $stmt_favorites->close();
 
+            // NOTE: These will be updated instantly by JS, but we keep initial logic for layout stability
             $borrowed_book_ids = [];
-            $sql_borrowed = "SELECT book_id FROM borrow_requests WHERE id_number = ? AND borrow_status IN ('Pending', 'Approved')";
+            $sql_borrowed = "SELECT book_id FROM borrow_requests WHERE id_number = ? AND borrow_status IN ('Pending', 'Approved', 'Borrowed')";
             $stmt_borrowed = $conn->prepare($sql_borrowed);
             $stmt_borrowed->bind_param("s", $current_user_id);
             $stmt_borrowed->execute();
@@ -192,18 +228,25 @@ $all_books_result = $stmt_books->get_result();
                     $image_path = !empty($book['book_image_path']) ? '../' . htmlspecialchars($book['book_image_path']) : 'placeholder.png';
                     $is_favorite = in_array($book['book_id'], $favorite_book_ids);
                     $favorite_class = $is_favorite ? 'is-favorite' : '';
+                    
                     $has_borrowed = in_array($book['book_id'], $borrowed_book_ids);
                     $has_reserved = in_array($book['book_id'], $reserved_book_ids);
                 ?>
                 
-                <div class="product-card">
+                <div class="product-card" id="card-<?php echo $book['book_id']; ?>">
                     <a href="book-details.php?id=<?php echo $book['book_id']; ?>" class="book-card-link">
                         <div class="card-clickable-area">
                             <img src="<?php echo $image_path; ?>" alt="<?php echo htmlspecialchars($book['book_name']); ?>">
                             <div class="card-info">
                                 <h3><?php echo htmlspecialchars($book['book_name']); ?></h3>
                                 <p><?php echo htmlspecialchars($book['book_description']); ?></p>
-                                <p class="book-quantity"><strong>Available Copies:</strong> <?php echo htmlspecialchars($book['available_copies']); ?></p>
+                                
+                                <!-- Added ID for Real-Time Update -->
+                                <p class="book-quantity">
+                                    <strong>Available Copies:</strong> 
+                                    <span id="qty-<?php echo $book['book_id']; ?>"><?php echo htmlspecialchars($book['available_copies']); ?></span>
+                                </p>
+                                
                                 <?php if (!empty($book['category'])): ?>
                                 <p class="book-category">Category: <?php echo htmlspecialchars($book['category']); ?></p>
                                 <?php endif; ?>
@@ -211,19 +254,22 @@ $all_books_result = $stmt_books->get_result();
                         </div>
                     </a>
                     
-                    <div class="button-group">
-                        <?php if ($has_borrowed): ?>
-                            <button class="borrowed-btn" disabled>Borrowed</button>
-                        <?php elseif ($has_reserved): ?>
-                            <button class="reserved-btn" disabled>Reserved</button>
-                        <?php elseif ($book['available_copies'] > 0): ?>
-                            <button class="open-borrow-modal-btn" data-book-id="<?php echo $book['book_id']; ?>" data-book-name="<?php echo htmlspecialchars($book['book_name']); ?>">Borrow Now</button>
-                        <?php else: ?>
-                            <form action="../backend/create_reservation.php" method="POST" style="flex-grow: 1;">
-                                <input type="hidden" name="book_id" value="<?php echo $book['book_id']; ?>">
-                                <button type="submit" class="reserve-btn">Reserve</button>
-                            </form>
-                        <?php endif; ?>
+                    <div class="button-group" id="btn-group-<?php echo $book['book_id']; ?>">
+                        <!-- 1. Borrowed/Disabled Button -->
+                        <button id="btn-disabled-<?php echo $book['book_id']; ?>" class="borrowed-btn" style="<?php echo ($has_borrowed || $has_reserved) ? '' : 'display:none;'; ?>" disabled>
+                            <?php echo $has_borrowed ? 'Borrowed' : ($has_reserved ? 'Reserved' : 'Unavailable'); ?>
+                        </button>
+
+                        <!-- 2. Borrow Button -->
+                        <button id="btn-borrow-<?php echo $book['book_id']; ?>" class="open-borrow-modal-btn" data-book-id="<?php echo $book['book_id']; ?>" data-book-name="<?php echo htmlspecialchars($book['book_name']); ?>" style="<?php echo (!$has_borrowed && !$has_reserved && $book['available_copies'] > 0) ? '' : 'display:none;'; ?>">
+                            Borrow Now
+                        </button>
+                        
+                        <!-- 3. Reserve Button (Form) -->
+                        <form id="form-reserve-<?php echo $book['book_id']; ?>" action="../backend/create_reservation.php" method="POST" style="flex-grow: 1; <?php echo (!$has_borrowed && !$has_reserved && $book['available_copies'] == 0) ? '' : 'display:none;'; ?>">
+                            <input type="hidden" name="book_id" value="<?php echo $book['book_id']; ?>">
+                            <button type="submit" class="reserve-btn">Reserve</button>
+                        </form>
 
                         <form class="favorite-form" action="../backend/toggle_favorite.php" method="POST" onclick="event.stopPropagation();">
                             <input type="hidden" name="book_id" value="<?php echo $book['book_id']; ?>">
@@ -271,7 +317,7 @@ $all_books_result = $stmt_books->get_result();
             <img class="step-image" src="placeholder.png" alt="Notification" />
             <div class="step-content">
               <div class="step-title">Step 4: Get Notification</div>
-              <div class="step-text">You’ll receive a notification about your request:<ul><li>Approved → “Pick up your book at the library desk.”</li><li>Rejected → “Sorry, your request was not approved.”</li></ul></div>
+              <div class="step-text">You’ll receive a notification about your request via email.</div>
             </div>
           </div>
           <div class="step">
@@ -356,7 +402,8 @@ $all_books_result = $stmt_books->get_result();
                     <p>You are requesting to borrow:</p>
                     <p><strong id="modalBookName"></strong></p>
                 </div>
-                <form id="borrowForm" class="modal-form" action="../backend/borrow_book.php" method="POST">
+                <!-- FIX: Removed action/method to rely on AJAX -->
+                <form id="borrowForm" class="modal-form">
                     <input type="hidden" id="modalBookId" name="book_id">
                     <label for="returnDate">Select a return date:</label>
                     <input type="date" id="returnDate" name="return_date" required>
@@ -475,8 +522,11 @@ $all_books_result = $stmt_books->get_result();
                     });
                 }
                 
+                // --- UPDATED: AJAX FORM SUBMISSION ---
                 if (borrowForm) {
-                    borrowForm.addEventListener('submit', function(event) {
+                    borrowForm.addEventListener('submit', async function(event) {
+                        event.preventDefault(); // STOP PAGE RELOAD
+                        
                         const selectedDateStr = returnDateInput.value;
                         if (!selectedDateStr) return;
                         
@@ -484,8 +534,40 @@ $all_books_result = $stmt_books->get_result();
                         const selectedDate = new Date(parts[0], parts[1] - 1, parts[2]);
 
                         if (selectedDate < tomorrow || selectedDate > maxDate) {
-                            event.preventDefault(); 
                             alert('Please select a return date between tomorrow and 30 days from now.');
+                            return;
+                        }
+
+                        const formData = new FormData(borrowForm);
+                        const submitBtn = borrowForm.querySelector('button');
+                        const originalText = submitBtn.innerText;
+                        submitBtn.disabled = true;
+                        submitBtn.innerText = "Processing...";
+
+                        try {
+                            const response = await fetch('../backend/borrow_book.php', {
+                                method: 'POST',
+                                body: formData
+                            });
+                            
+                            const result = await response.json();
+
+                            if (result.success) {
+                                borrowModal.style.display = 'none';
+                                showToast(result.message, "success");
+                                // Immediate update
+                                updateBookQuantities();
+                            } else {
+                                console.error("Backend Error:", result.message);
+                                showToast(result.message, "error");
+                            }
+
+                        } catch (error) {
+                            console.error("Network/JSON Error:", error);
+                            showToast("An unexpected error occurred. Check console.", "error");
+                        } finally {
+                            submitBtn.disabled = false;
+                            submitBtn.innerText = originalText;
                         }
                     });
                 }
@@ -522,9 +604,116 @@ $all_books_result = $stmt_books->get_result();
                 if (event.target == profileModal) { profileModal.style.display = "none"; }
                 if (event.target == editProfileModal) { editProfileModal.style.display = "none"; }
             };
+
+            // ==========================================================
+            // ============ REAL-TIME UPDATE LOGIC (POLLING) ============
+            // ==========================================================
+            
+            // 1. Update Book Availability
+            async function updateBookQuantities() {
+                try {
+                    const response = await fetch('../backend/fetch_book_status_api.php');
+                    const books = await response.json();
+                    
+                    books.forEach(book => {
+                        // A. Update Text Qty
+                        const qtyElement = document.getElementById(`qty-${book.id}`);
+                        if (qtyElement) qtyElement.textContent = book.qty;
+
+                        // B. Update Buttons based on QTY + USER STATUS
+                        const disabledBtn = document.getElementById(`btn-disabled-${book.id}`);
+                        const borrowBtn = document.getElementById(`btn-borrow-${book.id}`);
+                        const reserveForm = document.getElementById(`form-reserve-${book.id}`);
+
+                        if (disabledBtn && borrowBtn && reserveForm) {
+                            // Logic Cascade:
+                            if (book.user_status === 'borrowed') {
+                                disabledBtn.textContent = 'Borrowed';
+                                disabledBtn.style.display = 'inline-block';
+                                borrowBtn.style.display = 'none';
+                                reserveForm.style.display = 'none';
+                            } else if (book.user_status === 'reserved') {
+                                disabledBtn.textContent = 'Reserved';
+                                disabledBtn.style.display = 'inline-block';
+                                borrowBtn.style.display = 'none';
+                                reserveForm.style.display = 'none';
+                            } else if (book.qty > 0) {
+                                // Available for everyone
+                                disabledBtn.style.display = 'none';
+                                borrowBtn.style.display = 'inline-block';
+                                reserveForm.style.display = 'none';
+                            } else {
+                                // Out of stock
+                                disabledBtn.style.display = 'none';
+                                borrowBtn.style.display = 'none';
+                                reserveForm.style.display = 'block';
+                            }
+                        }
+                    });
+                } catch (error) { console.error("Update error:", error); }
+            }
+
+            // 2. Check Notifications (Fixed Bombardment Issue)
+            let seenNotifications = new Set(); 
+            let isFirstLoad = true; 
+
+            async function checkNotifications() {
+                try {
+                    const response = await fetch('../backend/fetch_student_notifications_api.php');
+                    const notifs = await response.json();
+                    
+                    notifs.forEach(n => {
+                        const notifKey = `${n.borrow_id}-${n.borrow_status}`;
+                        
+                        // If we haven't tracked this yet
+                        if (!seenNotifications.has(notifKey)) {
+                            seenNotifications.add(notifKey);
+                            
+                            // Only show Toast if it's NOT the very first load
+                            if (!isFirstLoad) {
+                                showToast(`Request Updated: "${n.book_name}" is now ${n.borrow_status}`, n.borrow_status === 'Approved' ? 'success' : 'error');
+                            }
+                        }
+                    });
+                    
+                    if (isFirstLoad) isFirstLoad = false;
+
+                } catch (error) { console.error("Notif error:", error); }
+            }
+
+            // 3. Toast UI Function
+            function showToast(message, type = 'success') {
+                const container = document.getElementById('toastContainer');
+                const toast = document.createElement('div');
+                toast.className = `toast ${type}`;
+                toast.innerHTML = `
+                    <div class="toast-content">${message}</div>
+                    <span class="toast-close">&times;</span>
+                `;
+                
+                container.appendChild(toast);
+                
+                setTimeout(() => toast.classList.add('show'), 100);
+
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 500);
+                }, 5000);
+
+                toast.querySelector('.toast-close').onclick = () => toast.remove();
+            }
+
+            // Run Immediately
+            updateBookQuantities();
+            checkNotifications();
+
+            // Run Every 3 Seconds
+            setInterval(() => {
+                updateBookQuantities();
+                checkNotifications();
+            }, 3000);
+
         });
-
-
     </script>
 </body>
-</html> 
+</html>
