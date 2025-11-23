@@ -12,7 +12,8 @@ include '../backend/db_connect.php';
 
 // --- 1. HANDLE FILTERS & INPUTS ---
 $search = $_GET['search'] ?? '';
-$sort = $_GET['sort'] ?? 'DESC'; // Default to Newest First
+$filter_status = $_GET['status'] ?? 'all'; // New Status Filter
+$sort = $_GET['sort'] ?? 'DESC';
 $page = isset($_GET['page']) && is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
 $results_per_page = 15;
 $offset = ($page - 1) * $results_per_page;
@@ -23,8 +24,7 @@ if (!in_array($sort, ['ASC', 'DESC'])) {
 }
 
 // --- 2. BUILD QUERY ---
-// Base Conditions
-$where_clauses = ["br.borrow_status IN ('Returned', 'Rejected', 'Cancelled', 'Expired')"];
+$where_clauses = [];
 $params = [];
 $types = "";
 
@@ -37,10 +37,29 @@ if (!empty($search)) {
     $types .= "ss";
 }
 
-$where_sql = "WHERE " . implode(" AND ", $where_clauses);
+// Status Filter Logic
+if ($filter_status !== 'all') {
+    if ($filter_status === 'history') {
+        // Show only closed transactions
+        $where_clauses[] = "br.borrow_status IN ('Returned', 'Rejected', 'Cancelled', 'Expired')";
+    } else if ($filter_status === 'active') {
+        // Show only active transactions
+        $where_clauses[] = "br.borrow_status IN ('Pending', 'Approved', 'Borrowed')";
+    } else {
+        // Show specific status
+        $where_clauses[] = "br.borrow_status = ?";
+        $params[] = $filter_status;
+        $types .= "s";
+    }
+}
+
+// Construct WHERE string
+$where_sql = "";
+if (!empty($where_clauses)) {
+    $where_sql = "WHERE " . implode(" AND ", $where_clauses);
+}
 
 // --- 3. PAGINATION COUNT ---
-// We need to know how many total rows match the filter to draw pagination links
 $count_sql = "
     SELECT COUNT(*) 
     FROM borrow_requests br
@@ -58,14 +77,15 @@ $total_pages = ceil($total_results / $results_per_page);
 $stmt_count->close();
 
 // --- 4. FETCH DATA QUERY ---
-// We sort by relevant date (return_date is priority for history, fallback to borrow_date)
+// We sort by relevant date. If returned, use return_date. If active, use borrow_date.
 $data_sql = "
-    SELECT br.borrow_id, u.fullname, b.book_name, br.borrow_date, br.return_date, br.borrow_status 
+    SELECT br.borrow_id, u.fullname, b.book_name, br.borrow_date, br.return_date, br.borrow_status, br.due_date
     FROM borrow_requests br
     JOIN users u ON br.id_number = u.id_number
     JOIN books b ON br.book_id = b.book_id
     $where_sql
-    ORDER BY br.return_date $sort, br.borrow_date $sort
+    ORDER BY 
+        CASE WHEN br.return_date IS NOT NULL THEN br.return_date ELSE br.borrow_date END $sort
     LIMIT ? OFFSET ?
 ";
 
@@ -91,7 +111,7 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
     <title>Borrow History - Admin Panel</title>
     <link rel="stylesheet" href="admin_styles.css">
     <style>
-        /* --- REVAMPED DARK STYLES (Consistent with Manage Books) --- */
+        /* --- REVAMPED DARK STYLES --- */
         
         /* Action Bar & Filters */
         .action-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
@@ -116,10 +136,16 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
         /* Status Badges */
         .badge { display: inline-block; padding: 4px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
         
+        /* Historical Statuses */
         .status-returned { background-color: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2); }
         .status-rejected { background-color: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2); }
         .status-cancelled { background-color: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); }
-        .status-expired { background-color: rgba(156, 163, 175, 0.2); color: #d1d5db; border: 1px solid rgba(156, 163, 175, 0.2); }
+        .status-expired { background-color: rgba(156, 163, 175, 0.2); color: #d1d5db; border: 1px solid rgba(156, 163, 175, 0.2); } /* Grey */
+
+        /* Active Statuses */
+        .status-pending { background-color: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.2); } /* Orange */
+        .status-approved { background-color: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.2); } /* Green */
+        .status-borrowed { background-color: rgba(139, 92, 246, 0.2); color: #a78bfa; border: 1px solid rgba(139, 92, 246, 0.2); } /* Purple */
 
         /* Pagination */
         .pagination { margin-top: 20px; text-align: center; }
@@ -147,7 +173,7 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
 
         <div class="main-wrapper">
             <header class="main-header">
-                <h1>Borrow History</h1>
+                <h1>Borrow History & Logs</h1>
                 <div class="user-info">
                     <span><?php echo $welcome_message; ?></span>
                     <a href="../backend/logout.php">Logout</a>
@@ -161,6 +187,17 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
                     <form action="borrow_history.php" method="GET" class="filter-form">
                         <input type="text" name="search" placeholder="Search User or Book Title..." value="<?php echo htmlspecialchars($search); ?>" style="flex-grow:1;">
                         
+                        <select name="status">
+                            <option value="all" <?php if($filter_status == 'all') echo 'selected'; ?>>All Statuses</option>
+                            <option value="history" <?php if($filter_status == 'history') echo 'selected'; ?>>All History (Closed)</option>
+                            <option value="active" <?php if($filter_status == 'active') echo 'selected'; ?>>All Active</option>
+                            <option disabled>---</option>
+                            <option value="Borrowed" <?php if($filter_status == 'Borrowed') echo 'selected'; ?>>Borrowed</option>
+                            <option value="Returned" <?php if($filter_status == 'Returned') echo 'selected'; ?>>Returned</option>
+                            <option value="Rejected" <?php if($filter_status == 'Rejected') echo 'selected'; ?>>Rejected</option>
+                            <option value="Expired" <?php if($filter_status == 'Expired') echo 'selected'; ?>>Expired</option>
+                        </select>
+
                         <select name="sort">
                             <option value="DESC" <?php if($sort == 'DESC') echo 'selected'; ?>>Newest First</option>
                             <option value="ASC" <?php if($sort == 'ASC') echo 'selected'; ?>>Oldest First</option>
@@ -178,9 +215,9 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
                                 <tr>
                                     <th>User</th>
                                     <th>Book Title</th>
-                                    <th>Date Borrowed</th>
+                                    <th>Date Borrowed / Requested</th>
                                     <th>Date Returned / Closed</th>
-                                    <th>Final Status</th>
+                                    <th>Current Status</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -193,7 +230,19 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
                                                 <?php echo htmlspecialchars(date('M d, Y', strtotime($row['borrow_date']))); ?>
                                             </td>
                                             <td style="color: #d1d5db;">
-                                                <?php echo $row['return_date'] ? htmlspecialchars(date('M d, Y', strtotime($row['return_date']))) : 'N/A'; ?>
+                                                <?php 
+                                                    // ==================================================
+                                                    // LOGIC FIX: Only show date if status is 'Returned'
+                                                    // For others (Rejected/Expired), show "N/A"
+                                                    // ==================================================
+                                                    if ($row['borrow_status'] === 'Returned' && !empty($row['return_date']) && $row['return_date'] != '0000-00-00' && $row['return_date'] != '0000-00-00 00:00:00') {
+                                                        echo htmlspecialchars(date('M d, Y', strtotime($row['return_date'])));
+                                                    } elseif ($row['borrow_status'] === 'Borrowed') {
+                                                        echo "<span style='color:#a78bfa;'>Due: " . htmlspecialchars(date('M d, Y', strtotime($row['due_date']))) . "</span>";
+                                                    } else {
+                                                        echo '<span style="color: #6b7280;">N/A</span>';
+                                                    }
+                                                ?>
                                             </td>
                                             <td>
                                                 <span class="badge status-<?php echo strtolower($row['borrow_status']); ?>">
@@ -205,7 +254,7 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
                                 <?php else: ?>
                                     <tr>
                                         <td colspan="5" style="text-align:center; padding:30px; color:#9ca3af;">
-                                            No history found matching your criteria.
+                                            No records found matching your criteria.
                                         </td>
                                     </tr>
                                 <?php endif; ?>
@@ -218,7 +267,7 @@ $welcome_message = "Welcome, " . htmlspecialchars($_SESSION['fullname']);
                     <div class="pagination">
                         <?php 
                             // Prepare query string for links to keep current filters active
-                            $query_params = ['search' => $search, 'sort' => $sort]; 
+                            $query_params = ['search' => $search, 'sort' => $sort, 'status' => $filter_status]; 
                         ?>
                         
                         <!-- Prev Link -->
